@@ -1,0 +1,72 @@
+/* src/index.css ou src/globals.css */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Manteve-se o tema claro como fallback, mas o foco está no escuro */
+    --background: 350 20% 8%;
+    --foreground: 350 10% 95%;
+    --card: 350 15% 12%;
+    --card-foreground: 350 10% 95%;
+    --popover: 350 15% 12%;
+    --popover-foreground: 350 10% 95%;
+    --primary: 307 70% 55%; /* Roxo Principal Vibrante */
+    --primary-foreground: 307 20% 95%;
+    --secondary: 350 12% 18%;
+    --secondary-foreground: 350 10% 90%;
+    --muted: 350 12% 20%;
+    --muted-foreground: 350 8% 60%;
+    --accent: 297 50% 45%; /* Roxo Secundário */
+    --accent-foreground: 350 10% 95%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 350 10% 95%;
+    --border: 297 20% 25%; /* Borda Roxa Sutil */
+    --input: 297 20% 18%;
+    --ring: 307 70% 55%; /* Roxo Principal Vibrante */
+    --radius: 0.5rem;
+  }
+ 
+  .dark {
+    /* --- TEMA ESCURO COM GRADIENTE ROXO --- */
+    --background: 297 40% 8%;      /* Baseado em #2a122b, bem escuro */
+    --foreground: 300 10% 95%;     /* Branco com um leve tom roxo */
+
+    --card: 297 35% 12%;           /* Roxo um pouco mais claro para cards */
+    --card-foreground: 300 10% 95%;
+
+    --popover: 297 40% 8%;
+    --popover-foreground: 300 10% 95%;
+
+    --primary: 307 70% 60%;        /* Roxo vibrante para botões e links */
+    --primary-foreground: 307 40% 10%; /* Texto escuro para botões primários */
+
+    --secondary: 297 25% 18%;
+    --secondary-foreground: 300 10% 95%;
+
+    --muted: 297 25% 18%;
+    --muted-foreground: 297 8% 60%;
+
+    --accent: 297 25% 18%;
+    --accent-foreground: 300 10% 95%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 300 10% 95%;
+
+    --border: 297 25% 18%;         /* Borda roxa escura */
+    --input: 297 20% 22%;          /* Input um pouco mais claro que a borda */
+    --ring: 307 70% 60%;           /* Anel de foco com o roxo vibrante */
+  }
+}
+ 
+@layer base {
+  * {
+    @apply border-border;
+  }
+ 
+  body {
+    @apply bg-background text-foreground;
+  }
+}

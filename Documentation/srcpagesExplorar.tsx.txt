@@ -1,0 +1,53 @@
+// src/pages/Explorar.tsx
+
+import React from 'react';
+import Layout from '@/components/Layout';
+import ContentCard from '@/components/ContentCard';
+
+// Dados fictícios para simular o conteúdo
+const mockContent = [
+  { id: 1, type: 'video' as const, mediaUrl: 'https://videos.pexels.com/video-files/4434246/4434246-sd_640_360_30fps.mp4', userName: 'Maria C.', likes: 15, userAvatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100' },
+  { id: 2, type: 'image' as const, mediaUrl: 'https://images.unsplash.com/photo-1542314831-068cd1dbb563?w=500', userName: 'João P.', likes: 25, userAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100' },
+  { id: 3, type: 'image' as const, mediaUrl: 'https://images.unsplash.com/photo-1599425573438-687f9a25b294?w=500', userName: 'Casal_Aventura', likes: 8, userAvatar: 'https://images.unsplash.com/photo-1527203629393-662b66b4c1a5?w=100' },
+  { id: 4, type: 'video' as const, mediaUrl: 'https://videos.pexels.com/video-files/3840441/3840441-sd_640_360_25fps.mp4', userName: 'Lucas F.', likes: 42, userAvatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=100' },
+  { id: 5, type: 'image' as const, mediaUrl: 'https://images.unsplash.com/photo-1581704324202-def99403d98a?w=500', userName: 'Ana B.', likes: 33 },
+  { id: 6, type: 'image' as const, mediaUrl: 'https://images.unsplash.com/photo-1579548122213-7d235f29b436?w=500', userName: 'Mistério', likes: 19 },
+  { id: 7, type: 'video' as const, mediaUrl: 'https://videos.pexels.com/video-files/5966058/5966058-sd_640_360_25fps.mp4', userName: 'Aline_S', likes: 51 },
+  { id: 8, type: 'image' as const, mediaUrl: 'https://images.unsplash.com/photo-1589139535694-8182b8353381?w=500', userName: 'Ricardo', likes: 12 },
+];
+
+const Explorar = () => {
+  return (
+    <Layout>
+      <div className="bg-background text-foreground min-h-screen">
+        {/* CORREÇÃO: Adicionado padding-top (pt-24) para criar espaço para o header fixo */}
+        <div className="container mx-auto px-4 pt-24 pb-12">
+          {/* Título e Subtítulo */}
+          <div className="text-center mb-10">
+            <h1 className="text-4xl font-extrabold text-white mb-2">Explorar</h1>
+            <p className="text-lg text-gray-400">
+              Descubra fotos e vídeos incríveis de outros usuários.
+            </p>
+          </div>
+
+          {/* Grade de Conteúdo */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {mockContent.map((item) => (
+              <ContentCard
+                key={item.id}
+                mediaUrl={item.mediaUrl}
+                type={item.type}
+                userName={item.userName}
+                likes={item.likes}
+                userAvatar={item.userAvatar}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    </Layout>
+  );
+};
+
+export default Explorar;
+

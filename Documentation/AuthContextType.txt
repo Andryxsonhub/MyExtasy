@@ -1,0 +1,33 @@
+// src/contexts/AuthContext.tsx
+
+import React, { createContext, useContext, useState, ReactNode } from 'react';
+
+// 1. Definição do tipo do contexto
+interface AuthContextType {
+  isLoggedIn: boolean;
+  setIsLoggedIn: (isLoggedIn: boolean) => void;
+}
+
+// 2. Criação do contexto
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// 3. Criação do Provedor (Provider) para envolver a aplicação
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  // CORREÇÃO AQUI: O estado inicial agora é 'false'
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  return (
+    <AuthContext.Provider value={{ isLoggedIn, setIsLoggedIn }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+// 4. Criação do Hook personalizado para usar o contexto
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth deve ser usado dentro de um AuthProvider');
+  }
+  return context;
+};
