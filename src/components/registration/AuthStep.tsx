@@ -1,112 +1,58 @@
 // src/components/registration/AuthStep.tsx
 
 import React, { useState } from 'react';
-import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
-import type { FormData } from './RegistrationFlow';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { FormData } from './RegistrationFlow';
 
-// 1. Atualizamos as propriedades recebidas
-interface Props {
+// A interface volta a esperar 'onConclude'
+interface AuthStepProps {
   onConclude: (data: Partial<FormData>) => void;
   onBack: () => void;
-  isLoading: boolean;
-  apiError: string | null;
+  isLoading?: boolean;
+  apiError?: string | null;
 }
 
-const AuthStep: React.FC<Props> = ({ onConclude, onBack, isLoading, apiError }) => {
+const AuthStep: React.FC<AuthStepProps> = ({ onConclude, onBack, isLoading, apiError }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
-  const handleConcludeClick = () => {
-    // Apenas chama a função, a lógica agora está no componente pai
-    onConclude({ email, password });
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (email && password) {
+      // A função agora chama 'onConclude' para finalizar o cadastro
+      onConclude({ email, password });
+    }
   };
-  
-  // 2. A lógica para desativar o botão agora também inclui o estado de 'isLoading'
-  const isButtonDisabled = !email || password.length < 6 || !agreedToTerms || isLoading;
 
   return (
-    <div className="w-full max-w-md mx-auto text-center">
-      <button onClick={onBack} className="absolute top-12 left-4 text-white hover:text-gray-300 disabled:opacity-50" disabled={isLoading}>
-        <ArrowLeft size={24} />
-      </button>
-
-      <div className="mb-8">
-        <p className="text-sm font-semibold text-gray-400 uppercase">A PREPARAR O SEU PERFIL</p>
-        <h1 className="text-2xl font-bold text-white mt-1">Só falta o seu email e uma senha</h1>
-      </div>
+    <div className="w-full max-w-lg text-center">
+      <h2 className="text-3xl font-bold text-white mb-2">Crie sua Conta</h2>
+      <p className="text-gray-400 mb-8">Último passo! Crie seus dados de acesso.</p>
       
-      <div className="space-y-4 text-left">
-        <input 
-          type="email" 
-          value={email} 
-          onChange={(e) => setEmail(e.target.value)} 
-          placeholder="seuemail@email.com" 
-          className="w-full px-4 py-3 bg-gray-800 text-white border-2 border-gray-600 rounded-lg focus:outline-none focus:border-pink-500"
-          disabled={isLoading}
-        />
-        <div className="relative">
-          <input 
-            type={showPassword ? 'text' : 'password'} 
-            value={password} 
-            onChange={(e) => setPassword(e.target.value)} 
-            placeholder="Senha (mínimo 6 caracteres)" 
-            className="w-full px-4 py-3 bg-gray-800 text-white border-2 border-gray-600 rounded-lg focus:outline-none focus:border-pink-500"
-            disabled={isLoading}
-          />
-          <button 
-            onClick={() => setShowPassword(!showPassword)} 
-            className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"
-            disabled={isLoading}
-          >
-            {showPassword ? <EyeOff /> : <Eye />}
-          </button>
+      <form onSubmit={handleSubmit} className="space-y-6 text-left">
+        <div className="space-y-2">
+          <Label htmlFor="email" className="text-gray-300">E-mail</Label>
+          <Input id="email" type="email" placeholder="seuemail@exemplo.com" value={email} onChange={(e) => setEmail(e.target.value)} required className="bg-input" />
         </div>
-      </div>
+        <div className="space-y-2">
+          <Label htmlFor="password" className="text-gray-300">Senha</Label>
+          <Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required className="bg-input" />
+        </div>
 
-      <div className="flex items-center my-4">
-        <div className="flex-grow border-t border-gray-700"></div>
-        <span className="flex-shrink mx-4 text-gray-400">OU</span>
-        <div className="flex-grow border-t border-gray-700"></div>
-      </div>
+        {apiError && <p className="text-sm text-red-500 text-center">{apiError}</p>}
 
-      <button className="w-full flex items-center justify-center gap-2 bg-white border-2 border-gray-300 text-gray-700 font-bold py-3 px-4 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50" disabled={isLoading}>
-        <img src="https://www.google.com/favicon.ico" alt="Ícone do Google" className="w-5 h-5"/>
-        Continuar com o Google
-      </button>
-      
-      <div className="space-y-4 mt-6 text-left text-sm">
-        <label className="flex items-center">
-          <input type="checkbox" className="h-5 w-5 rounded text-pink-500 focus:ring-pink-500 bg-gray-700 border-gray-600" disabled={isLoading}/>
-          <span className="ml-2 text-gray-300">Quero receber dicas, conteúdos e promoções.</span>
-        </label>
-        <label className="flex items-center">
-          <input 
-            type="checkbox" 
-            checked={agreedToTerms} 
-            onChange={(e) => setAgreedToTerms(e.target.checked)} 
-            className="h-5 w-5 rounded text-pink-500 focus:ring-pink-500 bg-gray-700 border-gray-600"
-            disabled={isLoading}
-          />
-          <span className="ml-2 text-gray-300">Eu confirmo ter mais de 18 anos e aceito os <a href="#" className="text-pink-500 underline">Termos de uso</a> e a <a href="#" className="text-pink-500 underline">Política de privacidade</a>.</span>
-        </label>
-      </div>
-      
-      <div className="mt-8">
-        <button
-          onClick={handleConcludeClick}
-          disabled={isButtonDisabled}
-          className="w-full bg-pink-600 text-white font-bold py-3 px-4 rounded-lg transition-colors duration-300 hover:bg-pink-700 disabled:bg-gray-500 disabled:cursor-not-allowed"
-        >
-          {isLoading ? 'Aguarde...' : 'Concluir cadastro'}
-        </button>
-        
-        {/* 3. Exibimos a mensagem de erro da API aqui */}
-        {apiError && (
-          <p className="text-red-500 text-sm mt-2">{apiError}</p>
-        )}
-      </div>
+        <div className="flex flex-col sm:flex-row gap-4 w-full pt-4">
+          <Button onClick={onBack} type="button" variant="outline" size="lg" className="w-full">
+            Voltar
+          </Button>
+          {/* O botão agora mostra "Concluir Cadastro" */}
+          <Button type="submit" size="lg" className="w-full" disabled={isLoading}>
+            {isLoading ? "Finalizando..." : "Concluir Cadastro"}
+          </Button>
+        </div>
+      </form>
     </div>
   );
 };
