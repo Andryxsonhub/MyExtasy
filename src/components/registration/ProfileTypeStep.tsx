@@ -3,15 +3,16 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { User, Users, UserCog } from 'lucide-react'; // Ícones para as opções
+import { User, Users, UserCog } from 'lucide-react';
+import type { FormData } from './RegistrationFlow'; // ALTERAÇÃO 1: Importando o FormData
 
 interface ProfileTypeStepProps {
-  onNext: (data: { profileType: string }) => void;
+  onNext: (data: Partial<FormData>) => void; // ALTERAÇÃO 2: Padronizando para Partial<FormData>
 }
 
 const options = [
-  { id: 'homem', label: 'Homem', icon: <User className="w-10 h-10" /> },
-  { id: 'mulher', label: 'Mulher', icon: <UserCog className="w-10 h-10" /> },
+  { id: 'homen', label: 'Solteiro', icon: <User className="w-10 h-10" /> },
+  { id: 'mulher', label: 'Solteira', icon: <UserCog className="w-10 h-10" /> },
   { id: 'casal', label: 'Casal', icon: <Users className="w-10 h-10" /> },
 ];
 

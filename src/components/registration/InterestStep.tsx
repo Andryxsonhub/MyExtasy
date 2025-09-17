@@ -5,6 +5,7 @@ import type { FormData } from './RegistrationFlow';
 
 interface Props {
   onNext: (data: Partial<FormData>) => void;
+  onBack: () => void;
 }
 
 const interestOptions = [
@@ -18,8 +19,7 @@ const interestOptions = [
     { id: 'travesti', label: 'Travesti', imageUrl: 'https://images.unsplash.com/photo-1587844204-624389a3a31c?w=500' },
 ];
 
-
-const InterestStep: React.FC<Props> = ({ onNext }) => {
+const InterestStep: React.FC<Props> = ({ onNext, onBack }) => {
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
 
   const handleSelect = (id: string) => {
@@ -32,6 +32,7 @@ const InterestStep: React.FC<Props> = ({ onNext }) => {
 
   return (
     <div className="w-full max-w-lg mx-auto">
+        {/* ALTERAÇÃO 1: Botão de seta que ficava aqui foi REMOVIDO */}
         <div className="text-center mb-8">
             <p className="text-sm font-semibold text-gray-400 uppercase">A PREPARAR O SEU PERFIL</p>
             <h1 className="text-2xl font-bold text-white mt-1">Você tem interesse em:</h1>
@@ -57,9 +58,13 @@ const InterestStep: React.FC<Props> = ({ onNext }) => {
             </div>
             ))}
         </div>
-        <div className="mt-8">
+        {/* ALTERAÇÃO 2: Adicionado o botão 'Voltar' e o container flex para os dois botões */}
+        <div className="mt-8 flex flex-col sm:flex-row gap-4">
+            <button onClick={onBack} className="w-full bg-gray-700 text-white font-bold py-3 px-4 rounded-lg transition-colors hover:bg-gray-600">
+                Voltar
+            </button>
             <button onClick={handleNextClick} disabled={selectedInterests.length === 0} className="w-full bg-pink-600 text-white font-bold py-3 px-4 rounded-lg transition-colors duration-300 hover:bg-pink-700 disabled:bg-gray-500 disabled:cursor-not-allowed">
-            Avançar
+                Avançar
             </button>
         </div>
     </div>
@@ -67,4 +72,3 @@ const InterestStep: React.FC<Props> = ({ onNext }) => {
 };
 
 export default InterestStep;
-

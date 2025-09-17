@@ -1,23 +1,33 @@
-// src/components/registration/RegistrationFlow.tsx (Correção final de tipo)
+// src/components/registration/RegistrationFlow.tsx (VERSÃO FINAL COMPLETA)
 
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
+// IMPORTS DE TODOS OS COMPONENTES
 import ProfileTypeStep from '@/components/registration/ProfileTypeStep';
 import UsernameStep from '@/components/registration/UsernameStep';
-import AuthStep from '@/components/registration/AuthStep';
+import InterestStep from '@/components/registration/InterestStep';
+import DesireStep from '@/components/registration/DesireStep';
 import FetishStep from '@/components/registration/FetishStep';
+import LocationStep from '@/components/registration/LocationStep';
+import SuggestionStep from '@/components/registration/SuggestionStep';
+import AuthStep from '@/components/registration/AuthStep';
 
+// TIPO DE DADOS ATUALIZADO COM TODOS OS CAMPOS
 export type FormData = {
   profileType?: string;
   username?: string;
   email?: string;
   password?: string;
+  interests?: string[];
+  desires?: string[];
   fetishes?: string[];
+  location?: string;
+  favoritedSuggestions?: number[];
 };
 
-const STEPS_COUNT = 4;
+const STEPS_COUNT = 8;
 
 const RegistrationFlow = () => {
   const [step, setStep] = useState(1);
@@ -31,14 +41,19 @@ const RegistrationFlow = () => {
   const handleNext = (data: Partial<FormData>) => {
     const updatedData = { ...formData, ...data };
     setFormData(updatedData);
-    setStep(prev => prev + 1);
+    if (step < STEPS_COUNT) {
+        setStep(prev => prev + 1);
+    }
   };
   
   const prevStep = () => {
     setError(null);
-    setStep(prev => prev - 1);
+    if (step > 1) {
+        setStep(prev => prev - 1);
+    }
   }
   
+  // FUNÇÃO DE CONCLUIR O CADASTRO (AGORA COMPLETA)
   const handleConclude = async (authData: Partial<FormData>) => {
     setIsLoading(true);
     setError(null);
@@ -56,7 +71,11 @@ const RegistrationFlow = () => {
       username: finalFormData.username,
       email: finalFormData.email,
       password: finalFormData.password,
+      interests: finalFormData.interests || [],
+      desires: finalFormData.desires || [],
       fetishes: finalFormData.fetishes || [],
+      location: finalFormData.location || '',
+      favoritedSuggestions: finalFormData.favoritedSuggestions || [],
     };
 
     try {
@@ -74,6 +93,7 @@ const RegistrationFlow = () => {
     }
   };
 
+  // RENDERIZAÇÃO DAS 8 ETAPAS
   const renderStep = () => {
     switch (step) {
       case 1:
@@ -81,10 +101,16 @@ const RegistrationFlow = () => {
       case 2:
         return <UsernameStep onNext={handleNext} onBack={prevStep} />;
       case 3:
-        {/* --- AQUI ESTÁ A CORREÇÃO --- */}
-        {/* "Embrulhamos" o handleNext para satisfazer o TypeScript */}
-        return <FetishStep onNext={(data) => handleNext(data)} onBack={prevStep} />;
+        return <InterestStep onNext={handleNext} onBack={prevStep} />;
       case 4:
+        return <DesireStep onNext={handleNext} onBack={prevStep} />;
+      case 5:
+        return <FetishStep onNext={handleNext} onBack={prevStep} />;
+      case 6:
+        return <LocationStep onNext={handleNext} onBack={prevStep} />;
+      case 7: 
+        return <SuggestionStep onNext={handleNext} onBack={prevStep} />;
+      case 8:
         return <AuthStep onConclude={handleConclude} onBack={prevStep} isLoading={isLoading} apiError={error} />;
       default:
         return <ProfileTypeStep onNext={handleNext} />;

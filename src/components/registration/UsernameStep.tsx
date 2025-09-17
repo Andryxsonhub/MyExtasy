@@ -1,7 +1,7 @@
 // src/components/registration/UsernameStep.tsx
 
 import React, { useState } from 'react';
-import { ArrowLeft, Check } from 'lucide-react';
+import { Check } from 'lucide-react';
 import type { FormData } from './RegistrationFlow';
 
 interface Props {
@@ -18,9 +18,7 @@ const UsernameStep: React.FC<Props> = ({ onNext, onBack }) => {
 
   return (
     <div className="w-full max-w-md mx-auto text-center">
-        <button onClick={onBack} className="absolute top-12 left-4 text-white hover:text-gray-300">
-            <ArrowLeft size={24} />
-        </button>
+        {/* ALTERAÇÃO 1: Botão de seta que ficava aqui foi REMOVIDO */}
         <div className="mb-8">
             <p className="text-sm font-semibold text-gray-400 uppercase">A PREPARAR O SEU PERFIL</p>
             <h1 className="text-2xl font-bold text-white mt-1">Como prefere ser chamado?</h1>
@@ -38,10 +36,14 @@ const UsernameStep: React.FC<Props> = ({ onNext, onBack }) => {
             <Check className="absolute right-4 top-1/2 -translate-y-1/2 text-green-500" />
             )}
         </div>
-        {/* A mensagem "Muito prazer" foi removida para uma interface mais limpa */}
-        <div className="mt-8">
+        
+        {/* ALTERAÇÃO 2: Adicionado o botão 'Voltar' e um container flex para os dois botões */}
+        <div className="mt-8 flex flex-col sm:flex-row gap-4">
+            <button onClick={onBack} className="w-full bg-gray-700 text-white font-bold py-3 px-4 rounded-lg transition-colors hover:bg-gray-600">
+                Voltar
+            </button>
             <button onClick={handleNextClick} disabled={username.length <= 3} className="w-full bg-pink-600 text-white font-bold py-3 px-4 rounded-lg transition-colors duration-300 hover:bg-pink-700 disabled:bg-gray-500 disabled:cursor-not-allowed">
-            Avançar
+                Avançar
             </button>
         </div>
     </div>
@@ -49,4 +51,3 @@ const UsernameStep: React.FC<Props> = ({ onNext, onBack }) => {
 };
 
 export default UsernameStep;
-

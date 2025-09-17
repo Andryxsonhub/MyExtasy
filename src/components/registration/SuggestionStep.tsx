@@ -10,8 +10,8 @@ interface Props {
 }
 
 const mockSuggestions = [
-    {id: 1, username: 'sexymachine8', type: 'Casal Ele/Ela', avatarUrl: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=100'},
-    {id: 2, username: 'lustfullcasal', type: 'Casal Ele/Ela', avatarUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100'},
+    {id: 1, username: 'sexymachine8', type: 'Solteiro', avatarUrl: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=100'},
+    {id: 2, username: 'lustfullcasal', type: 'Solteira', avatarUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100'},
     {id: 3, username: 'nacasa_da_pri', type: 'Casal Ele/Ela', avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100'},
     {id: 4, username: 'casalnordeste45', type: 'Casal Ele/Ela', avatarUrl: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=100'},
 ];

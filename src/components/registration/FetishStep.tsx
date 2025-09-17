@@ -2,13 +2,13 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import type { FormData } from './RegistrationFlow'; // ALTERAÇÃO 1: Importando o FormData
 
 interface FetishStepProps {
-  onNext: (data: { fetishes: string[] }) => void;
+  onNext: (data: Partial<FormData>) => void; // ALTERAÇÃO 2: Padronizando para Partial<FormData>
   onBack: () => void;
 }
 
-// Lista de fetiches baseada na sua imagem
 const fetishOptions = [
   'Sexo anal', 'Dotado', 'Cuckold', 'Voyerismo', 'Orgia', 'Gang Bang',
   'Sexting', 'Podolatria', 'Inversão', 'Dogging', 'Dupla penetração',
@@ -23,8 +23,8 @@ const FetishStep: React.FC<FetishStepProps> = ({ onNext, onBack }) => {
   const toggleSelection = (fetish: string) => {
     setSelected(prev => 
       prev.includes(fetish) 
-        ? prev.filter(f => f !== fetish) // Remove se já estiver selecionado
-        : [...prev, fetish] // Adiciona se não estiver
+        ? prev.filter(f => f !== fetish)
+        : [...prev, fetish]
     );
   };
 
@@ -37,7 +37,6 @@ const FetishStep: React.FC<FetishStepProps> = ({ onNext, onBack }) => {
       <h2 className="text-3xl font-bold text-white mb-2">Com fetiches em:</h2>
       <p className="text-gray-400 mb-8">Selecione um ou mais fetiches que te interessam. Isso ajudará a encontrar pessoas compatíveis.</p>
       
-      {/* Grid com os botões de fetiche */}
       <div className="flex flex-wrap justify-center gap-3 mb-8">
         {fetishOptions.map((fetish) => (
           <Button
@@ -55,7 +54,12 @@ const FetishStep: React.FC<FetishStepProps> = ({ onNext, onBack }) => {
         <Button onClick={onBack} variant="outline" size="lg" className="w-full">
           Voltar
         </Button>
-        <Button onClick={handleSubmit} size="lg" className="w-full">
+        <Button 
+          onClick={handleSubmit} 
+          size="lg" 
+          className="w-full"
+          disabled={selected.length === 0} // ALTERAÇÃO 3: Botão desabilitado se nada for selecionado
+        >
           Avançar
         </Button>
       </div>
