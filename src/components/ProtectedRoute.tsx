@@ -2,18 +2,16 @@
 
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+// --- AQUI ESTÁ A CORREÇÃO ---
+import { useAuth } from '../contexts/AuthProvider'; 
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  // 1. Pegamos também o `isLoading` do nosso hook
   const { isLoggedIn, isLoading } = useAuth();
 
-  // 2. Adicionamos a nova verificação de loading
-  // Enquanto o AuthProvider estiver verificando o token, exibimos uma mensagem.
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -22,13 +20,11 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     );
   }
 
-  // 3. A verificação antiga agora só roda DEPOIS que o loading termina.
-  // Se não está mais carregando E o usuário não está logado, redireciona.
   if (!isLoggedIn) {
+    // Agora ele vai ler o isLoggedIn correto e não vai redirecionar se estiver logado.
     return <Navigate to="/entrar" replace />;
   }
 
-  // Se não está carregando E está logado, renderiza a página.
   return <>{children}</>;
 };
 

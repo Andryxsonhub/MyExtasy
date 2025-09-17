@@ -7,6 +7,8 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { useAuth } from '../hooks/useAuth';
+// --- NOVO --- Importando o ícone do GitHub
+import { Github } from 'lucide-react'; 
 
 const Entrar: React.FC = () => {
   const { setIsLoggedIn } = useAuth();
@@ -32,8 +34,7 @@ const Entrar: React.FC = () => {
       localStorage.setItem('authToken', token);
       setIsLoggedIn(true);
       
-      // --- AQUI ESTÁ A MUDANÇA ---
-      navigate('/home'); // Redireciona para a nova página Home
+      navigate('/home'); 
 
     } catch (caughtError: unknown) {
       let errorMessage = 'Ocorreu um erro. Tente novamente.';
@@ -100,6 +101,32 @@ const Entrar: React.FC = () => {
               {isLoading ? 'Entrando...' : 'Entrar'}
             </Button>
           </form>
+
+          {/* =============================================================== */}
+          {/* ======================= NOVO CÓDIGO AQUI ====================== */}
+          {/* =============================================================== */}
+          
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-border" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-card px-2 text-gray-400">OU</span>
+            </div>
+          </div>
+
+          <Button variant="outline" className="w-full" asChild>
+            {/* Este link aponta para o seu backend local para iniciar o login */}
+            <a href="http://localhost:3001/auth/github">
+              <Github className="mr-2 h-4 w-4" />
+              Entrar com GitHub
+            </a>
+          </Button>
+
+          {/* =============================================================== */}
+          {/* ===================== FIM DO NOVO CÓDIGO ====================== */}
+          {/* =============================================================== */}
+
           <p className="text-center text-sm text-gray-400 mt-6">
             Não tem uma conta?{' '}
             <Link to="/cadastrar" className="font-medium text-primary hover:underline">

@@ -1,23 +1,38 @@
 // src/contexts/AuthProvider.tsx
 
-import React, { createContext, useState, ReactNode, useEffect } from 'react';
-import { AuthContext, AuthContextType } from './AuthContext';
+import React, { useState, ReactNode, useEffect, useContext } from 'react';
+import { AuthContext, User } from './AuthContext';
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  // AQUI ESTÁ A MUDANÇA: O estado já começa com o valor correto.
-  const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('authToken'));
-  
-  // Este estado de loading é ótimo para futuras telas de carregamento.
+  const [isLoggedIn, setIsLoggedIn] = useState(false); 
+  const [user, setUser] = useState<User | null>(null);
+  // O isLoading agora começa como true, forçando a verificação inicial
   const [isLoading, setIsLoading] = useState(true);
 
-  // O useEffect agora só controla o estado de 'carregando'.
   useEffect(() => {
+    // Esta função roda uma vez quando o app carrega
+    // para verificar se já existe um token de login de uma sessão anterior.
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      setIsLoggedIn(true);
+      // No futuro, você faria uma chamada à API aqui para buscar os dados do usuário
+      // e então setUser(userData);
+    }
+    // Independentemente de ter token ou não, a verificação terminou.
     setIsLoading(false);
   }, []);
 
   return (
-    <AuthContext.Provider value={{ isLoggedIn, setIsLoggedIn, isLoading }}>
+    <AuthContext.Provider value={{ isLoggedIn, setIsLoggedIn, isLoading, user, setUser }}>
       {children}
     </AuthContext.Provider>
   );
+};
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth deve ser usado dentro de um AuthProvider');
+  }
+  return context;
 };
