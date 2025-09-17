@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom';
 import LikeButton from './LikeButton';
 
 // A interface do Post deve ser a mesma do Explorar.tsx
-interface Post {
+export interface Post {
   id: number;
   userid: number;
   media_type: 'image' | 'video';
