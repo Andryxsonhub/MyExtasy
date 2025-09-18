@@ -7,8 +7,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { useAuth } from '../hooks/useAuth';
-// --- NOVO --- Importando o ícone do GitHub
-import { Github } from 'lucide-react'; 
+import { Github } from 'lucide-react';
 
 const Entrar: React.FC = () => {
   const { setIsLoggedIn } = useAuth();
@@ -19,13 +18,17 @@ const Entrar: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Criamos a URL base da API usando a variável de ambiente
+  const apiUrl = `${import.meta.env.VITE_API_URL}/api`;
+
   const handleLogin = async (event: React.FormEvent) => {
     event.preventDefault();
     setIsLoading(true);
     setError(null);
 
     try {
-      const response = await axios.post('https://myextasyclub-backend.onrender.com/api/login', {
+      // --- LINHA ALTERADA AQUI ---
+      const response = await axios.post(`${apiUrl}/login`, {
         email: email,
         password: password,
       });
@@ -58,6 +61,7 @@ const Entrar: React.FC = () => {
         </div>
         <div className="bg-card border border-border rounded-lg shadow-lg p-8">
           <form className="space-y-6" onSubmit={handleLogin}>
+            {/* ... o resto do seu formulário continua igual ... */}
             <div>
               <Label htmlFor="email" className="text-gray-300">
                 E-mail
@@ -94,17 +98,11 @@ const Entrar: React.FC = () => {
                 disabled={isLoading}
               />
             </div>
-
             {error && <p className="text-sm text-red-500 text-center">{error}</p>}
-
             <Button type="submit" className="w-full text-white" disabled={isLoading}>
               {isLoading ? 'Entrando...' : 'Entrar'}
             </Button>
           </form>
-
-          {/* =============================================================== */}
-          {/* ======================= NOVO CÓDIGO AQUI ====================== */}
-          {/* =============================================================== */}
           
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
@@ -116,16 +114,12 @@ const Entrar: React.FC = () => {
           </div>
 
           <Button variant="outline" className="w-full" asChild>
-            {/* Este link aponta para o seu backend local para iniciar o login */}
-            <a href="http://localhost:3001/auth/github">
+            {/* --- LINHA ALTERADA AQUI --- */}
+            <a href={`${import.meta.env.VITE_API_URL}/auth/github`}>
               <Github className="mr-2 h-4 w-4" />
               Entrar com GitHub
             </a>
           </Button>
-
-          {/* =============================================================== */}
-          {/* ===================== FIM DO NOVO CÓDIGO ====================== */}
-          {/* =============================================================== */}
 
           <p className="text-center text-sm text-gray-400 mt-6">
             Não tem uma conta?{' '}
