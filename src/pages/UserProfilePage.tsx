@@ -1,63 +1,82 @@
-// src/pages/UserProfilePage.tsx
+// src/pages/UserProfilePage.tsx (Versão Final com a Interface Corrigida)
 
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Layout from '@/components/Layout';
-import UserProfile from '@/components/UserProfile'; // Importamos o seu componente de perfil
+import ProfileHeader from '@/components/ProfileHeader';
+import ProfileTabs from '@/components/ProfileTabs';
+import ProfileSidebar from '@/components/ProfileSidebar';
+import CreatePost from '@/components/CreatePost';
 
-// Interface para definir o formato dos dados do usuário que virão da API
+// ===================================================================
+// INTERFACE ATUALIZADA PARA INCLUIR OS NOVOS CAMPOS DO BACKEND
+// ===================================================================
 interface UserData {
   id: number;
   name: string;
   email: string;
-  bio: string | null; // A bio pode ser nula
-  profile_picture_url: string | null;
+  bio: string | null;
+  profilePictureUrl: string | null;
+  location: string | null;
+  gender: string | null;
+  createdAt: string;
+  lastSeenAt: string | null;
 }
 
 const UserProfilePage: React.FC = () => {
-  // useParams pega o 'userId' da URL (ex: /profile/4)
-  const { userId } = useParams<{ userId: string }>(); 
-  
+  const navigate = useNavigate();
   const [userData, setUserData] = useState<UserData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Função para buscar os dados do usuário na API
+    // A lógica de busca de dados continua a mesma
     const fetchUserData = async () => {
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        navigate('/entrar');
+        return;
+      }
       try {
         setIsLoading(true);
-        // Chamada para uma nova rota de API que ainda vamos criar
-        const response = await axios.get(`http://localhost:3001/api/users/${userId}`);
+        const response = await axios.get('http://localhost:3001/api/users/profile', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
         setUserData(response.data);
       } catch (err) {
-        setError('Usuário não encontrado ou erro ao carregar o perfil.');
-        console.error('Erro ao buscar perfil do usuário:', err);
+        setError('Erro ao carregar o perfil.');
+        console.error('Erro ao buscar perfil:', err);
       } finally {
         setIsLoading(false);
       }
     };
 
-    if (userId) {
-      fetchUserData();
-    }
-  }, [userId]); // Roda o efeito sempre que o userId na URL mudar
+    fetchUserData();
+  }, [navigate]);
 
   return (
     <Layout>
       <div className="container mx-auto px-4 pt-24 pb-12">
-        {isLoading && <p className="text-center text-white">Carregando perfil...</p>}
+        {isLoading && <p className="text-center text-white">Carregindo seu perfil...</p>}
         {error && <p className="text-center text-red-500">{error}</p>}
         
-        {/* Se os dados foram carregados com sucesso, renderiza o seu componente UserProfile */}
-        {userData && (
-          <UserProfile 
-            name={userData.name}
-            email={userData.email}
-            bio={userData.bio || 'Este usuário ainda não adicionou uma bio.'}
-            profilePictureUrl={userData.profile_picture_url || 'https://avatar.iran.liara.run/public'}
-          />
+        {userData && <ProfileHeader user={userData} />}
+
+        {!isLoading && !error && userData && (
+          <div className="mt-8 flex flex-col md:flex-row gap-8">
+            <div className="w-full md:w-2/3">
+              <div className="bg-card p-6 rounded-lg shadow-lg">
+                <ProfileTabs />
+                <div className="mt-6">
+                   <CreatePost />
+                </div>
+              </div>
+            </div>
+            <div className="w-full md:w-1/3">
+              <ProfileSidebar />
+            </div>
+          </div>
         )}
       </div>
     </Layout>

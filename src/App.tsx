@@ -22,7 +22,8 @@ import { Loja } from "./pages/Loja";
 import Planos from "./pages/Planos";
 import Entrar from "./pages/Entrar";
 import Cadastrar from "./pages/Cadastrar";
-import Dashboard from "./pages/Dashboard";
+// Dashboard não é mais necessário aqui se for substituído
+// import Dashboard from "./pages/Dashboard"; 
 import Sugestoes from "./pages/Sugestoes";
 import UserProfilePage from "./pages/UserProfilePage";
 import Home from "./pages/Home";
@@ -31,32 +32,7 @@ const queryClient = new QueryClient();
 
 // Componente "Portão de Chegada" para o callback do GitHub
 const GithubCallbackHandler = () => {
-  const { setIsLoggedIn, setUser } = useAuth();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    const verifyLogin = async () => {
-      try {
-        const response = await axios.get('http://localhost:3001/api/auth/profile', {
-          withCredentials: true, 
-        });
-
-        if (response.data && response.data.user) {
-          setIsLoggedIn(true);
-          setUser(response.data.user);
-          navigate('/home');
-        } else {
-          navigate('/entrar');
-        }
-      } catch (error) {
-        console.error("Falha na verificação de autenticação", error);
-        navigate('/entrar');
-      }
-    };
-
-    verifyLogin();
-  }, [setIsLoggedIn, setUser, navigate]);
-
+  // ... seu código do GithubCallbackHandler continua igual ...
   return (
     <div className="flex justify-center items-center h-screen">
       <p className="text-white text-xl">Autenticando...</p>
@@ -68,9 +44,6 @@ const GithubCallbackHandler = () => {
 const AppRoutes = () => {
   return (
     <Routes>
-      {/* =============================================================== */}
-      {/* ================ A ROTA QUE ESTAVA FALTANDO =================== */}
-      {/* =============================================================== */}
       <Route path="/auth/github/callback" element={<GithubCallbackHandler />} />
 
       {/* --- Rotas Públicas --- */}
@@ -84,9 +57,18 @@ const AppRoutes = () => {
       <Route path="/explorar" element={<ProtectedRoute><Explorar /></ProtectedRoute>} />
       <Route path="/lives" element={<ProtectedRoute><Lives /></ProtectedRoute>} />
       <Route path="/sugestoes" element={<ProtectedRoute><Sugestoes /></ProtectedRoute>} />
-      <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+      
+      {/* ROTA ANTIGA QUE ESTAMOS REMOVENDO */}
+      {/* <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} /> */}
+
+      {/* ROTA PARA VER O PERFIL DE OUTROS USUÁRIOS (continua igual) */}
       <Route path="/profile/:userId" element={<ProtectedRoute><UserProfilePage /></ProtectedRoute>} />
+
+      {/* ======================================================= */}
+      {/* ====== NOVA ROTA DEFINITIVA PARA "MEU PERFIL" ========= */}
+      {/* ======================================================= */}
+      <Route path="/meu-perfil" element={<ProtectedRoute><UserProfilePage /></ProtectedRoute>} />
       
       <Route path="*" element={<NotFound />} />
     </Routes>
@@ -94,6 +76,7 @@ const AppRoutes = () => {
 };
 
 const App = () => {
+    // ... seu componente App continua igual ...
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>

@@ -1,29 +1,88 @@
-// src/components/UserProfile.tsx
+// src/pages/UserProfilePage.tsx (Versão Completa com o CreatePost)
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import Layout from '@/components/Layout';
+import ProfileHeader from '@/components/ProfileHeader';
+import ProfileTabs from '@/components/ProfileTabs';
+import ProfileSidebar from '@/components/ProfileSidebar';
+import CreatePost from '@/components/CreatePost'; // 1. IMPORTAMOS O NOVO COMPONENTE
 
-interface UserProfileProps {
+// ... (interface UserData e a lógica do componente continuam iguais) ...
+interface UserData {
+  id: number;
   name: string;
   email: string;
-  bio: string;
-  profilePictureUrl: string;
+  bio: string | null;
+  profilePictureUrl: string | null;
+  location: string | null;
 }
 
-const UserProfile: React.FC<UserProfileProps> = ({ name, email, bio, profilePictureUrl }) => {
+const UserProfilePage: React.FC = () => {
+  const navigate = useNavigate();
+  const [userData, setUserData] = useState<UserData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        navigate('/entrar');
+        return;
+      }
+      try {
+        setIsLoading(true);
+        const response = await axios.get('http://localhost:3001/api/users/profile', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setUserData(response.data);
+      } catch (err) {
+        setError('Erro ao carregar o perfil.');
+        console.error('Erro ao buscar perfil:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, [navigate]);
+
+
   return (
-    <div className="bg-gray-800 border border-gray-700 rounded-lg shadow-lg p-8 text-white text-center">
-      <div className="w-32 h-32 mx-auto rounded-full overflow-hidden border-4 border-pink-600 mb-6">
-        <img 
-          src={profilePictureUrl} 
-          alt={`Foto de perfil de ${name}`} 
-          className="w-full h-full object-cover" 
-        />
+    <Layout>
+      <div className="container mx-auto px-4 pt-24 pb-12">
+        {isLoading && <p className="text-center text-white">Carregando seu perfil...</p>}
+        {error && <p className="text-center text-red-500">{error}</p>}
+        
+        {userData && <ProfileHeader user={userData} />}
+
+        {!isLoading && !error && userData && (
+          <div className="mt-8 flex flex-col md:flex-row gap-8">
+            
+            {/* --- Coluna Principal (Esquerda) --- */}
+            <div className="w-full md:w-2/3">
+              <div className="bg-card p-6 rounded-lg shadow-lg">
+                <ProfileTabs />
+                <div className="mt-6">
+                   {/* 2. SUBSTITUÍMOS O TEXTO DE PLACEHOLDER PELO NOVO COMPONENTE */}
+                   <CreatePost />
+                   {/* Mais tarde, aqui também listaremos os posts existentes */}
+                </div>
+              </div>
+            </div>
+
+            {/* --- Barra Lateral (Direita) --- */}
+            <div className="w-full md:w-1/3">
+              <ProfileSidebar />
+            </div>
+            
+          </div>
+        )}
       </div>
-      <h2 className="text-2xl font-bold mb-2">{name}</h2>
-      <p className="text-pink-400 mb-4">{email}</p>
-      <p className="text-gray-400 text-sm italic">{bio}</p>
-    </div>
+    </Layout>
   );
 };
 
-export default UserProfile;
+export default UserProfilePage;

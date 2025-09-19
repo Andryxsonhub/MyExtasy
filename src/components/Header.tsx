@@ -1,9 +1,9 @@
-// src/components/Header.tsx (Versão Final com a Ordem Correta dos Links)
+// src/components/Header.tsx (Versão Corrigida)
 
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { Button } from './ui/button';
-import { useAuth } from '../contexts/AuthProvider'; 
+import { useAuth } from '../contexts/AuthProvider';
 import newLogo from '../assets/logo_sem_fundo_limpo.png';
 import axios from 'axios';
 
@@ -21,7 +21,7 @@ const Header: React.FC = () => {
     } catch (error) {
       console.error("Erro no logout:", error);
     } finally {
-      localStorage.removeItem('authToken');  
+      localStorage.removeItem('authToken');
       setIsLoggedIn(false);
       setUser(null);
       navigate('/');
@@ -41,7 +41,8 @@ const Header: React.FC = () => {
         {isLoggedIn && (
           <nav className="hidden md:flex items-center space-x-6">
               <NavLink to="/home" className={({ isActive }) => `text-sm font-medium transition-colors ${isActive ? 'text-primary' : 'text-white hover:text-gray-300'}`}>Home</NavLink>
-              <NavLink to="/dashboard" className={({ isActive }) => `text-sm font-medium transition-colors ${isActive ? 'text-primary' : 'text-white hover:text-gray-300'}`}>Meu Perfil</NavLink>
+              {/* MUDANÇA 1: Rota corrigida aqui */}
+              <NavLink to="/meu-perfil" className={({ isActive }) => `text-sm font-medium transition-colors ${isActive ? 'text-primary' : 'text-white hover:text-gray-300'}`}>Meu Perfil</NavLink>
               <NavLink to="/explorar" className={({ isActive }) => `text-sm font-medium transition-colors ${isActive ? 'text-primary' : 'text-white hover:text-gray-300'}`}>Explorar</NavLink>
               <NavLink to="/lives" className={({ isActive }) => `text-sm font-medium transition-colors ${isActive ? 'text-primary' : 'text-white hover:text-gray-300'}`}>Lives</NavLink>
               <NavLink to="/planos" className={({ isActive }) => `text-sm font-medium transition-colors ${isActive ? 'text-primary' : 'text-white hover:text-gray-300'}`}>Planos</NavLink>
@@ -54,7 +55,8 @@ const Header: React.FC = () => {
             // --- AVATAR E BOTÃO DE SAIR ---
             <>
               <Button onClick={handleLogout} variant="ghost" className="text-white hidden sm:inline-flex">Sair</Button>
-              <NavLink to="/dashboard">
+              {/* MUDANÇA 2: Rota do avatar corrigida aqui */}
+              <NavLink to="/meu-perfil">
                 <Avatar className="h-9 w-9">
                   <AvatarImage src={user?.photos?.[0]?.value} alt={user?.username} />
                   <AvatarFallback>{user?.username?.charAt(0).toUpperCase()}</AvatarFallback>
