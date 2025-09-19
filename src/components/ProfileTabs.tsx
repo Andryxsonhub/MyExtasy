@@ -1,24 +1,28 @@
-// src/components/ProfileTabs.tsx
+// Arquivo: src/components/ProfileTabs.tsx (AGORA INTERATIVO)
 
-import React, { useState } from 'react';
+import React from 'react';
 
-const TABS = ['Publicações', 'Sobre', 'Fotos', 'Vídeos', 'Amigos', 'Estatísticas'];
+interface ProfileTabsProps {
+  activeTab: string;
+  setActiveTab: (tab: string) => void;
+}
 
-const ProfileTabs: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('Publicações');
+const ProfileTabs: React.FC<ProfileTabsProps> = ({ activeTab, setActiveTab }) => {
+  const tabs = ['Publicações', 'Sobre', 'Fotos', 'Videos', 'Amigos', 'Estatísticas'];
 
   return (
-    <div className="border-b border-border">
-      <nav className="-mb-px flex space-x-6" aria-label="Tabs">
-        {TABS.map((tab) => (
+    <div className="border-b border-gray-700">
+      <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+        {tabs.map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors
+            className={`
+              whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm
               ${
                 activeTab === tab
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-300'
+                  ? 'border-purple-500 text-purple-400'
+                  : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-500'
               }
             `}
           >

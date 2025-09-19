@@ -1,81 +1,74 @@
-// src/components/ProfileHeader.tsx (Versão 100% Dinâmica)
+// Arquivo: src/components/ProfileHeader.tsx (VERSÃO COMPLETA E CORRIGIDA)
 
 import React from 'react';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MapPin } from 'lucide-react';
 
-// Função para calcular há quanto tempo algo aconteceu (ex: "Membro há 5 minutos")
-const timeSince = (date: Date): string => {
-    const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
-    let interval = seconds / 31536000;
-    if (interval > 1) return Math.floor(interval) + " anos";
-    interval = seconds / 2592000;
-    if (interval > 1) return Math.floor(interval) + " meses";
-    interval = seconds / 86400;
-    if (interval > 1) return Math.floor(interval) + " dias";
-    interval = seconds / 3600;
-    if (interval > 1) return Math.floor(interval) + " horas";
-    interval = seconds / 60;
-    if (interval > 1) return Math.floor(interval) + " minutos";
-    return Math.floor(seconds) + " segundos";
-}
-
-// 1. Atualizamos a interface para receber os novos dados do backend
+// Esta interface precisa existir aqui para que o componente saiba o formato do objeto 'user'
+// Garanta que ela seja igual à que está na página UserProfilePage.tsx
 interface UserData {
+  id: number;
   name: string;
-  location: string | null;
+  email: string;
+  bio: string | null;
   profilePictureUrl: string | null;
+  location: string | null;
   gender: string | null;
-  createdAt: string; // O Prisma envia datas como string no JSON
+  createdAt: string;
   lastSeenAt: string | null;
 }
 
+// 1. AQUI ESTÁ A MUDANÇA PRINCIPAL: Adicionamos 'onEditClick' às props que o componente espera
 interface ProfileHeaderProps {
   user: UserData;
+  onEditClick: () => void; // A função que será chamada no clique do botão
 }
 
-const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user }) => {
-  // Convertemos as datas de string para objeto Date para podermos usá-las
-  const memberSinceDate = new Date(user.createdAt);
-  const lastSeenDate = user.lastSeenAt ? new Date(user.lastSeenAt) : null;
+// 2. E AQUI NÓS RECEBEMOS a função 'onEditClick' junto com o 'user'
+const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user, onEditClick }) => {
+  
+  // O cálculo do tempo de membro pode continuar aqui se você já o tinha
+  const calculateMembershipDuration = (createdAt: string) => {
+    const creationDate = new Date(createdAt);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - creationDate.getTime()) / 1000);
+
+    if (diffInSeconds < 60) return `${diffInSeconds} segundos`;
+    const diffInMinutes = Math.floor(diffInSeconds / 60);
+    if (diffInMinutes < 60) return `${diffInMinutes} minutos`;
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) return `${diffInHours} horas`;
+    const diffInDays = Math.floor(diffInHours / 24);
+    return `${diffInDays} dias`;
+  };
+
+  const membershipDuration = calculateMembershipDuration(user.createdAt);
 
   return (
-    <div className="bg-card rounded-lg shadow-lg overflow-hidden">
-      <div className="h-48 bg-gradient-to-r from-purple-600 to-indigo-700 relative" />
-      <div className="p-6">
-        <div className="flex items-end -mt-24">
-          <Avatar className="w-36 h-36 border-4 border-card">
-            <AvatarImage src={user.profilePictureUrl || undefined} alt={user.name} />
-            <AvatarFallback>{user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
-          </Avatar>
+    <header className="bg-card text-white p-6 rounded-lg shadow-lg">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
+        {/* Profile Picture Placeholder */}
+        <div className="w-32 h-32 bg-purple-800 rounded-full flex items-center justify-center text-4xl font-bold flex-shrink-0">
+          {user.name.substring(0, 2).toUpperCase()}
+        </div>
 
-          <div className="ml-6 flex-grow">
-            <h1 className="text-3xl font-bold text-white">{user.name}</h1>
-            <div className="flex items-center text-sm text-gray-400 mt-1">
-              {/* 2. Usamos os dados reais vindos do backend */}
-              {user.gender && <span>{user.gender}</span>}
-              {user.gender && user.location && <span className="mx-2">•</span>}
-              {user.location && (
-                <div className="flex items-center">
-                  <MapPin className="w-4 h-4 mr-1" />
-                  <span>{user.location}</span>
-                </div>
-              )}
-            </div>
-          </div>
+        {/* User Info */}
+        <div className="flex-grow">
+          <h1 className="text-4xl font-bold">{user.name}</h1>
+          {user.location && <p className="text-gray-400 mt-1">📍 {user.location}</p>}
+        </div>
 
-          <div className="text-right">
-            <Button variant="secondary">Editar perfil</Button>
-            <p className="text-xs text-gray-500 mt-2">
-              {/* 3. Usamos a função 'timeSince' para mostrar dados dinâmicos */}
-              Membro há {timeSince(memberSinceDate)}
-              {lastSeenDate && ` - Último acesso há ${timeSince(lastSeenDate)}`}
-            </p>
-          </div>
+        {/* Edit Button and Membership Info */}
+        <div className="flex flex-col items-start sm:items-end gap-2 mt-4 sm:mt-0">
+          <button 
+            // 3. AQUI USAMOS a função no evento onClick do botão
+            onClick={onEditClick}
+            className="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition-colors w-full sm:w-auto"
+          >
+            Editar perfil
+          </button>
+          <span className="text-xs text-gray-500">Membro há {membershipDuration}</span>
         </div>
       </div>
-    </div>
+    </header>
   );
 };
 
