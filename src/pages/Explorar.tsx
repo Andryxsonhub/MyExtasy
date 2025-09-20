@@ -1,14 +1,14 @@
-// src/pages/Explorar.tsx
+// src/pages/Explorar.tsx (VERSÃO COMPLETA E CORRIGIDA)
 
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '@/services/api'; // ALTERAÇÃO 1: Importa a instância 'api'
 import Layout from '@/components/Layout';
 import ContentCard from '@/components/ContentCard';
 
 // Interface completa para o objeto Post, incluindo o userid
 interface Post {
   id: number;
-  userid: number; // Essencial para o link do perfil
+  userid: number;
   media_type: 'image' | 'video';
   media_url: string;
   author_name: string;
@@ -25,7 +25,8 @@ const Explorar = () => {
     const fetchPosts = async () => {
       try {
         setIsLoading(true);
-        const response = await axios.get('https://myextasyclub-backend.onrender.com/api/posts');
+        // ALTERAÇÃO 2: Usa 'api.get' com a rota simplificada
+        const response = await api.get('/posts');
         setPosts(response.data);
       } catch (err) {
         setError('Não foi possível carregar o conteúdo. Tente novamente mais tarde.');
@@ -38,15 +39,18 @@ const Explorar = () => {
   }, []);
 
   const handleLike = async (postId: number) => {
+    // Lógica de UI otimista (atualiza a tela antes da resposta do servidor)
     setPosts(currentPosts =>
       currentPosts.map(post =>
         post.id === postId ? { ...post, likes_count: post.likes_count + 1 } : post
       )
     );
     try {
-      await axios.post(`https://myextasyclub-backend.onrender.com/api/posts/${postId}/like`);
+      // ALTERAÇÃO 3: Usa 'api.post' com a rota simplificada
+      await api.post(`/posts/${postId}/like`);
     } catch (error) {
       console.error('Erro ao curtir o post:', error);
+      // Reverte a curtida na UI se a chamada falhar
       setPosts(currentPosts =>
         currentPosts.map(post =>
           post.id === postId ? { ...post, likes_count: post.likes_count - 1 } : post
@@ -74,8 +78,8 @@ const Explorar = () => {
               {posts.map((post) => (
                 <ContentCard
                   key={post.id}
-                  post={post} // Passamos o objeto 'post' inteiro
-                  onLike={() => handleLike(post.id)} // Passamos a função de like
+                  post={post}
+                  onLike={() => handleLike(post.id)}
                 />
               ))}
             </div>

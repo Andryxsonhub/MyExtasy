@@ -1,8 +1,8 @@
-// src/pages/Entrar.tsx
+// src/pages/Entrar.tsx (VERSÃO COMPLETA E CORRIGIDA)
 
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../services/api'; // ALTERAÇÃO 1: Importa a instância 'api'
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -18,8 +18,7 @@ const Entrar: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Criamos a URL base da API usando a variável de ambiente
-  const apiUrl = `${import.meta.env.VITE_API_URL}/api`;
+  // ALTERAÇÃO 2: A variável 'apiUrl' foi removida. Não é mais necessária.
 
   const handleLogin = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -27,8 +26,8 @@ const Entrar: React.FC = () => {
     setError(null);
 
     try {
-      // --- LINHA ALTERADA AQUI ---
-      const response = await axios.post(`${apiUrl}/login`, {
+      // ALTERAÇÃO 3: A chamada agora usa 'api.post' e uma URL simplificada.
+      const response = await api.post('/login', {
         email: email,
         password: password,
       });
@@ -41,8 +40,10 @@ const Entrar: React.FC = () => {
 
     } catch (caughtError: unknown) {
       let errorMessage = 'Ocorreu um erro. Tente novamente.';
-      if (axios.isAxiosError(caughtError)) {
-        errorMessage = caughtError.response?.data?.message || 'E-mail ou senha inválidos.';
+      // O tratamento de erro do Axios continua funcionando, pois 'api' é uma instância do Axios.
+      if (typeof caughtError === 'object' && caughtError !== null && 'isAxiosError' in caughtError) {
+        const axiosError = caughtError as { response?: { data?: { message?: string } } };
+        errorMessage = axiosError.response?.data?.message || 'E-mail ou senha inválidos.';
       } else if (caughtError instanceof Error) {
         errorMessage = caughtError.message;
       }
@@ -51,6 +52,12 @@ const Entrar: React.FC = () => {
       setIsLoading(false);
     }
   };
+  
+  // ALTERAÇÃO 4: Lógica para o link do GitHub.
+  // Como a VITE_API_URL agora é '.../api', removemos o '/api' para links diretos
+  // que não devem passar pelo prefixo da API.
+  const githubAuthUrl = `${import.meta.env.VITE_API_URL.replace('/api', '')}/auth/github`;
+
 
   return (
     <div className="container mx-auto px-4 py-12 flex items-center justify-center">
@@ -61,7 +68,6 @@ const Entrar: React.FC = () => {
         </div>
         <div className="bg-card border border-border rounded-lg shadow-lg p-8">
           <form className="space-y-6" onSubmit={handleLogin}>
-            {/* ... o resto do seu formulário continua igual ... */}
             <div>
               <Label htmlFor="email" className="text-gray-300">
                 E-mail
@@ -114,8 +120,8 @@ const Entrar: React.FC = () => {
           </div>
 
           <Button variant="outline" className="w-full" asChild>
-            {/* --- LINHA ALTERADA AQUI --- */}
-            <a href={`${import.meta.env.VITE_API_URL}/auth/github`}>
+            {/* ALTERAÇÃO 5: Usamos a nova variável para o link do GitHub */}
+            <a href={githubAuthUrl}>
               <Github className="mr-2 h-4 w-4" />
               Entrar com GitHub
             </a>

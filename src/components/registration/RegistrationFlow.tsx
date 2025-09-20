@@ -1,7 +1,7 @@
-// src/components/registration/RegistrationFlow.tsx (VERSÃO CORRIGIDA)
+// src/components/registration/RegistrationFlow.tsx (CÓDIGO COMPLETO E CORRIGIDO)
 
 import React, { useState } from 'react';
-import axios from 'axios';
+import api from '@/services/api'; // <--- ALTERAÇÃO 1: Importa a instância 'api'
 import { useNavigate } from 'react-router-dom';
 
 // IMPORTS DE TODOS OS COMPONENTES
@@ -78,16 +78,17 @@ const RegistrationFlow = () => {
     };
 
     try {
-      // =========================== AQUI ESTÁ A ALTERAÇÃO ===========================
-      const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/users/register`, userData);
-      // =============================================================================
+      // ALTERAÇÃO 2: A chamada agora usa 'api.post' e uma URL simplificada
+      const response = await api.post('/users/register', userData);
       
       alert('Cadastro concluído com sucesso! Você será redirecionado para a página de login.');
       navigate('/entrar');
     } catch (caughtError: unknown) {
       let errorMessage = "Ocorreu um erro desconhecido. Tente novamente.";
-      if (axios.isAxiosError(caughtError)) {
-        errorMessage = caughtError.response?.data?.message || "Erro ao conectar com o servidor.";
+      // Supondo que você tenha um tratamento de erro do Axios
+      if (typeof caughtError === 'object' && caughtError !== null && 'isAxiosError' in caughtError) {
+        const axiosError = caughtError as { response?: { data?: { message?: string } } };
+        errorMessage = axiosError.response?.data?.message || "Erro ao conectar com o servidor.";
       }
       setError(errorMessage);
     } finally {

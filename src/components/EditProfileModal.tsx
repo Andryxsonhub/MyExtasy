@@ -1,7 +1,7 @@
-// Arquivo: src/components/EditProfileModal.tsx (VERSÃO FINAL COM API)
+// Arquivo: src/components/EditProfileModal.tsx (VERSÃO FINAL E PADRONIZADA)
 
 import React, { useState, useEffect } from 'react';
-import axios from 'axios'; // 1. Importamos o axios
+import api from '@/services/api'; // ALTERAÇÃO 1: Importa a instância 'api'
 
 interface UserData {
   id: number; name: string; email: string; bio: string | null; profilePictureUrl: string | null; location: string | null; gender: string | null; createdAt: string; lastSeenAt: string | null;
@@ -11,13 +11,11 @@ interface EditProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
   currentUser: UserData | null;
-  onUpdateSuccess: (updatedUser: UserData) => void; // 2. Nova prop para avisar a página principal que os dados mudaram
+  onUpdateSuccess: (updatedUser: UserData) => void;
 }
 
 const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, currentUser, onUpdateSuccess }) => {
   const [formData, setFormData] = useState({ name: '', location: '', bio: '' });
-  
-  // 3. Estados para feedback ao usuário
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,7 +26,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, cu
         location: currentUser.location || '',
         bio: currentUser.bio || '',
       });
-      setError(null); // Limpa erros anteriores ao abrir o modal
+      setError(null);
     }
   }, [isOpen, currentUser]);
 
@@ -39,27 +37,19 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, cu
     setFormData(prevState => ({ ...prevState, [name]: value }));
   };
 
-  // 4. AQUI ESTÁ A MÁGICA: A função de salvar agora chama a API
   const handleSave = async () => {
-    const token = localStorage.getItem('authToken');
-    if (!token) {
-      setError("Você não está autenticado.");
-      return;
-    }
+    // ALTERAÇÃO 2: A lógica de pegar o token foi REMOVIDA.
+    // O interceptor no 'api.ts' cuida disso automaticamente.
 
     setIsSaving(true);
     setError(null);
 
     try {
-      const response = await axios.put(
-        'http://localhost:3001/api/users/profile', 
-        formData, // Envia os dados do formulário
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      // ALTERAÇÃO 3: A chamada agora usa 'api.put' e é muito mais simples.
+      const response = await api.put('/users/profile', formData);
       
-      // Se a chamada for um sucesso:
-      onUpdateSuccess(response.data.user); // Avisa a página principal com os novos dados
-      onClose(); // Fecha o modal
+      onUpdateSuccess(response.data.user);
+      onClose();
 
     } catch (err) {
       console.error('Erro ao salvar o perfil:', err);
@@ -77,7 +67,6 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, cu
 
         <form onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
           <div className="space-y-6">
-            {/* Campos do formulário continuam iguais */}
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-2">Nome</label>
               <input type="text" id="name" name="name" value={formData.name} onChange={handleChange} className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500" />
@@ -92,7 +81,6 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, cu
             </div>
           </div>
           
-          {/* Mostra mensagem de erro se houver */}
           {error && <p className="text-red-500 text-sm mt-4">{error}</p>}
           
           <div className="mt-8 flex justify-end gap-4">
