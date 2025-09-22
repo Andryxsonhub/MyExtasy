@@ -1,71 +1,85 @@
-// Arquivo: src/components/CreatePost.tsx (VERSÃO CORRIGIDA E SIMPLIFICADA)
+// frontend/src/components/CreatePost.tsx
 
 import React, { useState } from 'react';
-import api from '@/services/api'; // ALTERAÇÃO 1: Importa a instância 'api'
+import api from '../services/api';
+import { Button } from './ui/button'; // Reutilizamos nosso componente de botão
+import { SendHorizonal } from 'lucide-react'; // Ícone de envio
 
-const CreatePost: React.FC = () => {
+// Definimos as "propriedades" que este componente vai receber
+interface CreatePostProps {
+  userProfilePicture: string | null; // A URL da foto de perfil do usuário
+  onPostCreated: () => void; // Uma função para ser chamada quando um post for criado com sucesso
+}
+
+const CreatePost: React.FC<CreatePostProps> = ({ userProfilePicture, onPostCreated }) => {
   const [content, setContent] = useState('');
-  const [isPosting, setIsPosting] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // A verificação de conteúdo vazio continua importante
+  const handlePostSubmit = async () => {
+    // Impede o envio de posts vazios
     if (!content.trim()) {
-      setError('Você não pode criar uma publicação vazia.');
+      setError('A publicação não pode estar vazia.');
       return;
     }
 
-    // ALTERAÇÃO 2: A lógica de pegar o token e criar o cabeçalho foi REMOVIDA.
-    // O nosso 'api.ts' agora faz isso automaticamente para nós!
-
-    setIsPosting(true);
+    setIsLoading(true);
     setError(null);
 
     try {
-      // ALTERAÇÃO 3: A chamada para a API agora é extremamente simples.
-      // A URL base e o token de autorização são adicionados закулисно.
-      await api.post('/posts', { content: content });
+      // Faz a chamada para a API para criar o post
+      await api.post('/posts', { content });
       
-      setContent('');
-      // Idealmente, aqui você sinalizaria ao componente pai para recarregar a lista de posts.
-      // window.location.reload(); // Uma solução simples, mas não ideal, para recarregar a página.
-      
+      setContent(''); // Limpa a caixa de texto
+      onPostCreated(); // Avisa o componente pai que um novo post foi criado
+
     } catch (err) {
-      setError('Ocorreu um erro ao criar a publicação. Tente novamente.');
-      console.error('Erro ao criar post:', err);
+      console.error("Erro ao criar post:", err);
+      setError('Não foi possível criar a publicação. Tente novamente.');
     } finally {
-      setIsPosting(false);
+      setIsLoading(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <div className="w-full">
-        <textarea
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          placeholder="Compartilhe aqui prazer com fotos, vídeos e textos picantes!"
-          className="w-full bg-gray-800 border border-gray-700 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-purple-500 text-white transition-colors"
-          rows={3}
-          disabled={isPosting}
+    <div className="create-post-container bg-card border border-border rounded-lg p-4 mb-6">
+      <div className="flex items-start space-x-4">
+        {/* Foto de Perfil do Usuário */}
+        <img
+          src={userProfilePicture || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=1780&auto=format&fit=crop'}
+          alt="Foto de perfil"
+          className="w-12 h-12 rounded-full object-cover"
         />
+        {/* Caixa de Texto */}
+        <div className="flex-1">
+          <textarea
+            value={content}
+            onChange={(e) => {
+              setContent(e.target.value);
+              setError(null);
+            }}
+            placeholder="Compartilhe aqui prazer com fotos, vídeos e textos picantes!"
+            className="w-full bg-transparent border-b border-border focus:outline-none focus:border-primary text-white resize-none p-2"
+            rows={3}
+            disabled={isLoading}
+          />
+          {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
+        </div>
       </div>
-
-      {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
-      
+      {/* Botão de Envio */}
       <div className="flex justify-end mt-4">
-        <button 
-          type="submit" 
-          className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded-lg transition-colors disabled:bg-purple-900 disabled:cursor-not-allowed"
-          disabled={isPosting || !content.trim()}
-        >
-          {isPosting ? 'Publicando...' : 'Publicar'}
-        </button>
+        <Button onClick={handlePostSubmit} disabled={isLoading}>
+          {isLoading ? 'Publicando...' : (
+            <>
+              <SendHorizonal className="w-4 h-4 mr-2" />
+              Publicar
+            </>
+          )}
+        </Button>
       </div>
-    </form>
+    </div>
   );
 };
 
 export default CreatePost;
+
