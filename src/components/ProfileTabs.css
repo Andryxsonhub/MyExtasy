@@ -1,0 +1,29 @@
+/* frontend/src/components/ProfileTabs.css */
+
+.profile-tabs-nav {
+  display: flex;
+  border-bottom: 1px solid #444; /* Linha separadora abaixo das abas */
+  margin-bottom: 20px;
+}
+
+.tab-button {
+  padding: 12px 20px;
+  cursor: pointer;
+  background-color: transparent;
+  border: none;
+  color: #aaa; /* Cor das abas inativas */
+  font-size: 1rem;
+  font-weight: 500;
+  border-bottom: 3px solid transparent; /* Borda inferior invisível por padrão */
+  transition: all 0.2s ease-in-out;
+}
+
+.tab-button:hover {
+  color: #fff; /* Cor ao passar o mouse */
+  background-color: #2c2c2e; /* Leve fundo ao passar o mouse */
+}
+
+.tab-button.active {
+  color: #E91E63; /* Cor da aba ativa (rosa) */
+  border-bottom: 3px solid #E91E63; /* Borda inferior rosa na aba ativa */
+}

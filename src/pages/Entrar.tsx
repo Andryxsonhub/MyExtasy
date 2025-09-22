@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import api from '../services/api'; // ALTERAÇÃO 1: Importa a instância 'api'
+import api from '../services/api'; 
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -18,15 +18,12 @@ const Entrar: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // ALTERAÇÃO 2: A variável 'apiUrl' foi removida. Não é mais necessária.
-
   const handleLogin = async (event: React.FormEvent) => {
     event.preventDefault();
     setIsLoading(true);
     setError(null);
 
     try {
-      // ALTERAÇÃO 3: A chamada agora usa 'api.post' e uma URL simplificada.
       const response = await api.post('/login', {
         email: email,
         password: password,
@@ -40,7 +37,6 @@ const Entrar: React.FC = () => {
 
     } catch (caughtError: unknown) {
       let errorMessage = 'Ocorreu um erro. Tente novamente.';
-      // O tratamento de erro do Axios continua funcionando, pois 'api' é uma instância do Axios.
       if (typeof caughtError === 'object' && caughtError !== null && 'isAxiosError' in caughtError) {
         const axiosError = caughtError as { response?: { data?: { message?: string } } };
         errorMessage = axiosError.response?.data?.message || 'E-mail ou senha inválidos.';
@@ -53,10 +49,15 @@ const Entrar: React.FC = () => {
     }
   };
   
-  // ALTERAÇÃO 4: Lógica para o link do GitHub.
-  // Como a VITE_API_URL agora é '.../api', removemos o '/api' para links diretos
-  // que não devem passar pelo prefixo da API.
-  const githubAuthUrl = `${import.meta.env.VITE_API_URL.replace('/api', '')}/auth/github`;
+  // ==================================================================
+  // CORREÇÃO APLICADA AQUI
+  // ==================================================================
+  // 1. Buscamos a URL. Se ela não existir, usamos uma string vazia '' como padrão.
+  const apiUrl = import.meta.env.VITE_API_URL || ''; 
+  // 2. Agora, o .replace() é chamado em uma string que SEMPRE existe (mesmo que vazia),
+  //    o que evita o erro de "undefined".
+  const githubAuthUrl = `${apiUrl.replace('/api', '')}/auth/github`;
+  // ==================================================================
 
 
   return (
@@ -120,7 +121,6 @@ const Entrar: React.FC = () => {
           </div>
 
           <Button variant="outline" className="w-full" asChild>
-            {/* ALTERAÇÃO 5: Usamos a nova variável para o link do GitHub */}
             <a href={githubAuthUrl}>
               <Github className="mr-2 h-4 w-4" />
               Entrar com GitHub

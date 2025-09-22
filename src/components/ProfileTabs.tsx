@@ -1,35 +1,36 @@
-// Arquivo: src/components/ProfileTabs.tsx (AGORA INTERATIVO)
+// frontend/src/components/ProfileTabs.tsx
 
-import React from 'react';
+import React, { useState } from 'react';
+import './ProfileTabs.css'; // Vamos criar este arquivo CSS em seguida
 
 interface ProfileTabsProps {
-  activeTab: string;
-  setActiveTab: (tab: string) => void;
+  activeTab: string; // Para controlar qual aba está ativa (recebido de fora)
+  onTabChange: (tabName: string) => void; // Para notificar o componente pai sobre a mudança de aba
 }
 
-const ProfileTabs: React.FC<ProfileTabsProps> = ({ activeTab, setActiveTab }) => {
-  const tabs = ['Publicações', 'Sobre', 'Fotos', 'Videos', 'Amigos', 'Estatísticas'];
+const ProfileTabs: React.FC<ProfileTabsProps> = ({ activeTab, onTabChange }) => {
+  // Array de objetos para configurar nossas abas de forma fácil
+  const tabs = [
+    { name: 'Publicações', id: 'posts' },
+    { name: 'Sobre', id: 'about' },
+    { name: 'Fotos', id: 'photos' },
+    { name: 'Vídeos', id: 'videos' },
+  ];
 
   return (
-    <div className="border-b border-gray-700">
-      <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+    <div className="profile-tabs-container">
+      <div className="profile-tabs-nav">
         {tabs.map((tab) => (
           <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`
-              whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm
-              ${
-                activeTab === tab
-                  ? 'border-purple-500 text-purple-400'
-                  : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-500'
-              }
-            `}
+            key={tab.id}
+            className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}
+            onClick={() => onTabChange(tab.id)}
           >
-            {tab}
+            {tab.name}
           </button>
         ))}
-      </nav>
+      </div>
+      {/* Conteúdo da aba ativa será renderizado pelo componente pai */}
     </div>
   );
 };
