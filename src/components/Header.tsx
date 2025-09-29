@@ -1,11 +1,11 @@
-// src/components/Header.tsx (VERSÃO FINAL E CORRIGIDA)
+// src/components/Header.tsx (VERSÃO CORRIGIDA E FINAL)
 
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { Button } from './ui/button';
 import { useAuth } from '../contexts/AuthProvider';
 import newLogo from '../assets/logo_sem_fundo_limpo.png';
-import api from '../services/api'; // ALTERAÇÃO 1: Troca 'axios' por 'api'
+import api from '../services/api'; 
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
@@ -17,14 +17,10 @@ const Header: React.FC = () => {
 
   const handleLogout = async () => {
     try {
-      // ALTERAÇÃO 2: A chamada de logout agora usa o 'api' padronizado.
-      // A URL e as credenciais são tratadas automaticamente.
       await api.post('/auth/logout');
     } catch (error) {
-      // Mesmo se a chamada falhar, o logout no frontend deve acontecer.
       console.error("Erro no logout do servidor, mas deslogando localmente:", error);
     } finally {
-      // Esta parte é a mais importante para a experiência do usuário.
       localStorage.removeItem('authToken');
       setIsLoggedIn(false);
       setUser(null);
@@ -41,7 +37,7 @@ const Header: React.FC = () => {
           <span className="text-xl font-bold text-white mt-0.5 hidden sm:inline">MyExtasyClub</span>
         </NavLink>
 
-        {/* --- NAVEGAÇÃO DESKTOP NA ORDEM CORRETA --- */}
+        {/* --- NAVEGAÇÃO PARA USUÁRIOS LOGADOS --- */}
         {isLoggedIn && (
           <nav className="hidden md:flex items-center space-x-6">
               <NavLink to="/home" className={({ isActive }) => `text-sm font-medium transition-colors ${isActive ? 'text-primary' : 'text-white hover:text-gray-300'}`}>Home</NavLink>
@@ -50,6 +46,14 @@ const Header: React.FC = () => {
               <NavLink to="/lives" className={({ isActive }) => `text-sm font-medium transition-colors ${isActive ? 'text-primary' : 'text-white hover:text-gray-300'}`}>Lives</NavLink>
               <NavLink to="/planos" className={({ isActive }) => `text-sm font-medium transition-colors ${isActive ? 'text-primary' : 'text-white hover:text-gray-300'}`}>Planos</NavLink>
               <NavLink to="/sugestoes" className={({ isActive }) => `text-sm font-medium transition-colors ${isActive ? 'text-primary' : 'text-white hover:text-gray-300'}`}>Sugestões</NavLink>
+              <NavLink to="/sobre" className={({ isActive }) => `text-sm font-medium transition-colors ${isActive ? 'text-primary' : 'text-white hover:text-gray-300'}`}>Sobre</NavLink>
+          </nav>
+        )}
+        
+        {/* --- NAVEGAÇÃO PARA VISITANTES (APENAS COM O LINK "SOBRE") --- */}
+        {!isLoggedIn && (
+          <nav className="hidden md:flex items-center space-x-6">
+              <NavLink to="/sobre" className={({ isActive }) => `text-sm font-medium transition-colors ${isActive ? 'text-primary' : 'text-white hover:text-gray-300'}`}>Sobre</NavLink>
           </nav>
         )}
         
@@ -71,7 +75,7 @@ const Header: React.FC = () => {
                <NavLink to="/entrar"><Button variant="ghost" className="text-white">Entrar</Button></NavLink>
                <NavLink to="/cadastrar"><Button>Cadastrar</Button></NavLink>
              </div>
-          )}
+           )}
         </div>
       </div>
     </header>

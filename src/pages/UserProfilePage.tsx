@@ -1,5 +1,3 @@
-// frontend/src/pages/UserProfilePage.tsx (COM MODAL DE EDIÇÃO)
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
@@ -7,7 +5,7 @@ import ProfileHeader from '../components/ProfileHeader';
 import ProfileTabs from '../components/ProfileTabs';
 import ProfileSidebar from '../components/ProfileSidebar';
 import CreatePost from '../components/CreatePost';
-import EditProfileModal from '../components/EditProfileModal'; // <-- 1. IMPORTA O MODAL
+import EditProfileModal from '../components/EditProfileModal'; 
 
 interface UserData { id: number; name: string; email: string; bio: string | null; profilePictureUrl: string | null; location: string | null; gender: string | null; createdAt: string; lastSeenAt: string | null; }
 interface Post { id: number; content: string; createdAt: string; }
@@ -20,20 +18,23 @@ const UserProfilePage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // 2. ESTADO E FUNÇÕES PARA CONTROLAR O MODAL
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const openEditModal = () => setIsEditModalOpen(true);
   const closeEditModal = () => setIsEditModalOpen(false);
 
-  // Esta função recebe os dados atualizados do modal e atualiza a página
+  // Lógica de atualização do perfil corrigida para evitar erros de tipo.
   const handleUpdateSuccess = (updatedUserData: Partial<UserData> & { profile_picture_url?: string }) => {
-    // Primeiro, traduzimos o nome do campo da foto de perfil, se ele vier da API
-    const formattedData = {
-        ...updatedUserData,
-        profilePictureUrl: updatedUserData.profile_picture_url || updatedUserData.profilePictureUrl
-    };
+    setUserData(prevData => {
+      if (!prevData) return null;
 
-    setUserData(prevData => prevData ? { ...prevData, ...formattedData } : null);
+      const newUserData = {
+        ...prevData,
+        ...updatedUserData,
+        profilePictureUrl: updatedUserData.profile_picture_url ?? prevData.profilePictureUrl,
+      };
+      
+      return newUserData;
+    });
     closeEditModal();
   };
 
@@ -45,17 +46,21 @@ const UserProfilePage: React.FC = () => {
     } 
     try { 
       if (isLoading) setError(null); 
+
+      // Rotas corretas para buscar perfil e posts.
       const [profileResponse, postsResponse] = await Promise.all([ 
-        api.get('/users/profile'), 
-        api.get('/posts') 
+        api.get('/users/profile'),
+        api.get('/posts')
       ]); 
+
       const apiData = profileResponse.data; 
+      
       const formattedUserData: UserData = { 
         id: apiData.id, 
-        name: apiData.name, 
+        name: apiData.name || apiData.username,
         email: apiData.email, 
         bio: apiData.bio, 
-        profilePictureUrl: apiData.profile_picture_url, 
+        profilePictureUrl: apiData.profile_picture_url || apiData.avatar_url,
         location: apiData.location, 
         gender: apiData.gender, 
         createdAt: apiData.createdAt, 
@@ -71,9 +76,10 @@ const UserProfilePage: React.FC = () => {
     } 
   };
   
+  // useEffect agora executa apenas uma vez quando a página carrega.
   useEffect(() => { 
     fetchAllData(); 
-  }, [navigate]);
+  }, []);
   
   const renderTabContent = () => { 
     switch (activeTab) { 
@@ -102,14 +108,13 @@ const UserProfilePage: React.FC = () => {
     } 
   };
   
-  if (isLoading) { return <div className="text-center text-white p-12">Carregando perfil...</div>; }
+  if (isLoading) { return <div className="text-center text-white p-12">A carregar perfil...</div>; }
   if (error) { return <div className="text-center text-red-500 p-12">{error}</div>; }
 
   return (
     <div className="profile-page-container bg-background text-foreground min-h-screen">
       <div className="container mx-auto px-4 py-8">
         
-        {/* 3. O onEditClick agora abre o modal */}
         {userData && ( <ProfileHeader user={userData} onEditClick={openEditModal} /> )}
 
         <div className="mt-8 flex flex-col md:flex-row gap-8">
@@ -131,8 +136,6 @@ const UserProfilePage: React.FC = () => {
         </div>
       </div>
 
-      {/* 4. ADICIONA O COMPONENTE DO MODAL À PÁGINA */}
-      {/* Ele fica invisível até que isEditModalOpen seja true */}
       <EditProfileModal
         isOpen={isEditModalOpen}
         onClose={closeEditModal}

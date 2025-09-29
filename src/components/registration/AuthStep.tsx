@@ -1,29 +1,28 @@
-// src/components/registration/AuthStep.tsx
+// src/components/registration/AuthStep.tsx (CORRIGIDO PARA ACEITAR MENSAGEM DE SUCESSO)
 
 import React, { useState } from 'react';
 import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import type { FormData } from './RegistrationFlow';
 
-// 1. Atualizamos as propriedades recebidas
+// 1. ATUALIZAMOS AS PROPRIEDADES RECEBIDAS PARA INCLUIR A MENSAGEM DE SUCESSO
 interface Props {
   onConclude: (data: Partial<FormData>) => void;
   onBack: () => void;
   isLoading: boolean;
   apiError: string | null;
+  successMessage: string | null; // <-- ADICIONADO AQUI
 }
 
-const AuthStep: React.FC<Props> = ({ onConclude, onBack, isLoading, apiError }) => {
+const AuthStep: React.FC<Props> = ({ onConclude, onBack, isLoading, apiError, successMessage }) => { // <-- ADICIONADO AQUI
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const handleConcludeClick = () => {
-    // Apenas chama a função, a lógica agora está no componente pai
     onConclude({ email, password });
   };
   
-  // 2. A lógica para desativar o botão agora também inclui o estado de 'isLoading'
   const isButtonDisabled = !email || password.length < 6 || !agreedToTerms || isLoading;
 
   return (
@@ -102,8 +101,11 @@ const AuthStep: React.FC<Props> = ({ onConclude, onBack, isLoading, apiError }) 
           {isLoading ? 'Aguarde...' : 'Concluir cadastro'}
         </button>
         
-        {/* 3. Exibimos a mensagem de erro da API aqui */}
-        {apiError && (
+        {/* 2. EXIBIMOS A MENSAGEM DE SUCESSO OU DE ERRO */}
+        {successMessage && (
+          <p className="text-green-500 text-sm mt-2">{successMessage}</p>
+        )}
+        {apiError && !successMessage && (
           <p className="text-red-500 text-sm mt-2">{apiError}</p>
         )}
       </div>

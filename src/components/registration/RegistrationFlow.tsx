@@ -1,10 +1,11 @@
-// src/components/registration/RegistrationFlow.tsx (CÓDIGO COMPLETO E CORRIGIDO)
+// src/components/registration/RegistrationFlow.tsx (VERSÃO FINAL COM CORREÇÃO DE DUPLICATAS)
 
 import React, { useState } from 'react';
-import api from '@/services/api'; // <--- ALTERAÇÃO 1: Importa a instância 'api'
+import api from '@/services/api'; 
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthProvider';
 
-// IMPORTS DE TODOS OS COMPONENTES
+// IMPORTS DE TODOS OS COMPONENTES DE ETAPA
 import ProfileTypeStep from '@/components/registration/ProfileTypeStep';
 import UsernameStep from '@/components/registration/UsernameStep';
 import InterestStep from '@/components/registration/InterestStep';
@@ -14,7 +15,6 @@ import LocationStep from '@/components/registration/LocationStep';
 import SuggestionStep from '@/components/registration/SuggestionStep';
 import AuthStep from '@/components/registration/AuthStep';
 
-// TIPO DE DADOS ATUALIZADO COM TODOS OS CAMPOS
 export type FormData = {
   profileType?: string;
   username?: string;
@@ -35,8 +35,10 @@ const RegistrationFlow = () => {
   
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   
   const navigate = useNavigate();
+  const { setIsLoggedIn } = useAuth();
 
   const handleNext = (data: Partial<FormData>) => {
     const updatedData = { ...formData, ...data };
@@ -56,71 +58,73 @@ const RegistrationFlow = () => {
   const handleConclude = async (authData: Partial<FormData>) => {
     setIsLoading(true);
     setError(null);
+    setSuccessMessage(null);
     
-    const finalFormData = { ...formData, ...authData };
-    
-    if (!finalFormData.profileType || !finalFormData.username || !finalFormData.email || !finalFormData.password) {
-      setError("Dados de cadastro incompletos. Por favor, tente novamente do início.");
-      setIsLoading(false);
-      return;
-    }
-
+    // ================== INÍCIO DA CORREÇÃO ==================
+    // Construímos o objeto final de forma explícita para evitar chaves duplicadas.
     const userData = {
-      profileType: finalFormData.profileType,
-      username: finalFormData.username,
-      email: finalFormData.email,
-      password: finalFormData.password,
-      interests: finalFormData.interests || [],
-      desires: finalFormData.desires || [],
-      fetishes: finalFormData.fetishes || [],
-      location: finalFormData.location || '',
-      favoritedSuggestions: finalFormData.favoritedSuggestions || [],
+      profileType: formData.profileType,
+      username: formData.username,
+      email: authData.email,
+      password: authData.password,
+      interests: formData.interests || [],
+      desires: formData.desires || [],
+      fetishes: formData.fetishes || [],
+      location: formData.location || '',
+      favoritedSuggestions: formData.favoritedSuggestions || [],
     };
 
+    // Verificação de segurança para garantir que os dados essenciais estão presentes
+    if (!userData.email || !userData.password || !userData.username || !userData.profileType) {
+        setError("Dados essenciais (tipo de perfil, e-mail, senha ou nome de usuário) estão faltando. Por favor, reinicie o cadastro.");
+        setIsLoading(false);
+        return;
+    }
+    // =================== FIM DA CORREÇÃO ===================
+
     try {
-      // ALTERAÇÃO 2: A chamada agora usa 'api.post' e uma URL simplificada
-      const response = await api.post('/users/register', userData);
+      const response = await api.post('/register', userData);
       
-      alert('Cadastro concluído com sucesso! Você será redirecionado para a página de login.');
-      navigate('/entrar');
+      const { token } = response.data;
+      if (token) {
+        setSuccessMessage("Cadastro concluído com sucesso! Redirecionando...");
+        localStorage.setItem('authToken', token);
+        setIsLoggedIn(true); 
+        setTimeout(() => {
+            navigate('/home'); 
+        }, 1500);
+      } else {
+        setIsLoading(false);
+        navigate('/entrar', { state: { message: 'Cadastro concluído! Faça o login para continuar.' } });
+      }
+
     } catch (caughtError: unknown) {
       let errorMessage = "Ocorreu um erro desconhecido. Tente novamente.";
-      // Supondo que você tenha um tratamento de erro do Axios
       if (typeof caughtError === 'object' && caughtError !== null && 'isAxiosError' in caughtError) {
         const axiosError = caughtError as { response?: { data?: { message?: string } } };
         errorMessage = axiosError.response?.data?.message || "Erro ao conectar com o servidor.";
       }
       setError(errorMessage);
-    } finally {
       setIsLoading(false);
     }
   };
 
   const renderStep = () => {
     switch (step) {
-      case 1:
-        return <ProfileTypeStep onNext={handleNext} />;
-      case 2:
-        return <UsernameStep onNext={handleNext} onBack={prevStep} />;
-      case 3:
-        return <InterestStep onNext={handleNext} onBack={prevStep} />;
-      case 4:
-        return <DesireStep onNext={handleNext} onBack={prevStep} />;
-      case 5:
-        return <FetishStep onNext={handleNext} onBack={prevStep} />;
-      case 6:
-        return <LocationStep onNext={handleNext} onBack={prevStep} />;
-      case 7: 
-        return <SuggestionStep onNext={handleNext} onBack={prevStep} />;
-      case 8:
-        return <AuthStep onConclude={handleConclude} onBack={prevStep} isLoading={isLoading} apiError={error} />;
-      default:
-        return <ProfileTypeStep onNext={handleNext} />;
+      case 1: return <ProfileTypeStep onNext={handleNext} />;
+      case 2: return <UsernameStep onNext={handleNext} onBack={prevStep} />;
+      case 3: return <InterestStep onNext={handleNext} onBack={prevStep} />;
+      case 4: return <DesireStep onNext={handleNext} onBack={prevStep} />;
+      case 5: return <FetishStep onNext={handleNext} onBack={prevStep} />;
+      case 6: return <LocationStep onNext={handleNext} onBack={prevStep} />;
+      case 7: return <SuggestionStep onNext={handleNext} onBack={prevStep} />;
+      case 8: return <AuthStep onConclude={handleConclude} onBack={prevStep} isLoading={isLoading} apiError={error || ''} successMessage={successMessage || ''} />;
+      default: return <ProfileTypeStep onNext={handleNext} />;
     }
   };
 
   return (
-    <>
+    <div className="pt-10">
       {renderStep()}
       <div className="flex justify-center space-x-2 mt-8">
         {[...Array(STEPS_COUNT).keys()].map((s) => (
@@ -130,7 +134,7 @@ const RegistrationFlow = () => {
           ></div>
         ))}
       </div>
-    </>
+    </div>
   );
 };
 
