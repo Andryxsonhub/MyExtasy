@@ -1,28 +1,43 @@
-// Arquivo: src/services/api.ts (VERSÃO TURBINADA COM INTERCEPTOR)
+// src/services/api.ts (VERSÃO FINAL CORRIGIDA PARA VITE)
 
 import axios from 'axios';
 
+// Em projetos Vite, as variáveis de ambiente são acessadas via `import.meta.env`
+// e precisam do prefixo VITE_ para serem expostas no código do cliente.
+const baseURL = import.meta.env.VITE_API_URL || 'https://myextasyclub-backend.onrender.com';
+
+// Log para depuração. Verifique o console do navegador para confirmar qual URL está sendo usada.
+console.log(`AMBIENTE: ${import.meta.env.MODE}`);
+console.log(`API Base URL: ${baseURL}`);
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL
+  baseURL: baseURL,
 });
 
-// A MÁGICA ACONTECE AQUI (INTERCEPTOR)
-// Isso vai ser executado ANTES de TODA requisição que usar a instância 'api'
+// Interceptor para adicionar o token de autenticação em cada requisição.
 api.interceptors.request.use(
   (config) => {
-    // 1. Pega o token do localStorage
     const token = localStorage.getItem('authToken');
-    
-    // 2. Se o token existir, adiciona ao cabeçalho de autorização
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    
-    // 3. Retorna a configuração atualizada para a requisição prosseguir
     return config;
   },
+  (error) => Promise.reject(error)
+);
+
+// Interceptor para tratar erros de autenticação (401), deslogando o utilizador.
+api.interceptors.response.use(
+  (response) => response,
   (error) => {
-    // Em caso de erro na configuração, rejeita a promessa
+    if (error.response && error.response.status === 401) {
+      console.error("Erro 401: Token inválido ou expirado. A deslogar.");
+      localStorage.removeItem('authToken');
+      
+      if (window.location.pathname !== '/entrar') {
+          window.location.href = '/entrar';
+      }
+    }
     return Promise.reject(error);
   }
 );

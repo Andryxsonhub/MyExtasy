@@ -1,5 +1,3 @@
-// src/pages/Entrar.tsx (VERSÃO COMPLETA E CORRIGIDA)
-
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api'; 
@@ -24,16 +22,19 @@ const Entrar: React.FC = () => {
     setError(null);
 
     try {
+      // Chama a rota de login correta.
       const response = await api.post('/login', {
         email: email,
         password: password,
       });
 
+      // Guarda o token e atualiza o estado.
       const { token } = response.data;
       localStorage.setItem('authToken', token);
       setIsLoggedIn(true);
       
-      navigate('/home'); 
+      // Redireciona para o perfil após o login.
+      navigate('/meu-perfil'); 
 
     } catch (caughtError: unknown) {
       let errorMessage = 'Ocorreu um erro. Tente novamente.';
@@ -49,16 +50,8 @@ const Entrar: React.FC = () => {
     }
   };
   
-  // ==================================================================
-  // CORREÇÃO APLICADA AQUI
-  // ==================================================================
-  // 1. Buscamos a URL. Se ela não existir, usamos uma string vazia '' como padrão.
-  const apiUrl = import.meta.env.VITE_API_URL || ''; 
-  // 2. Agora, o .replace() é chamado em uma string que SEMPRE existe (mesmo que vazia),
-  //    o que evita o erro de "undefined".
-  const githubAuthUrl = `${apiUrl.replace('/api', '')}/auth/github`;
-  // ==================================================================
-
+  // URL para autenticação com o GitHub, agora fixa e sem depender de .env.
+  const githubAuthUrl = `https://myextasyclub-backend.onrender.com/auth/github`;
 
   return (
     <div className="container mx-auto px-4 py-12 flex items-center justify-center">
@@ -70,67 +63,40 @@ const Entrar: React.FC = () => {
         <div className="bg-card border border-border rounded-lg shadow-lg p-8">
           <form className="space-y-6" onSubmit={handleLogin}>
             <div>
-              <Label htmlFor="email" className="text-gray-300">
-                E-mail
-              </Label>
+              <Label htmlFor="email" className="text-gray-300">E-mail</Label>
               <Input
-                id="email"
-                type="email"
-                placeholder="seuemail@exemplo.com"
-                required
-                className="mt-2"
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  setError(null);
-                }}
-                disabled={isLoading}
+                id="email" type="email" placeholder="seuemail@exemplo.com" required className="mt-2"
+                value={email} onChange={(e) => { setEmail(e.target.value); setError(null); }} disabled={isLoading}
               />
             </div>
             <div>
-              <Label htmlFor="password" className="text-gray-300">
-                Senha
-              </Label>
+              <Label htmlFor="password" className="text-gray-300">Senha</Label>
               <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                required
-                className="mt-2"
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  setError(null);
-                }}
-                disabled={isLoading}
+                id="password" type="password" placeholder="••••••••" required className="mt-2"
+                value={password} onChange={(e) => { setPassword(e.target.value); setError(null); }} disabled={isLoading}
               />
             </div>
             {error && <p className="text-sm text-red-500 text-center">{error}</p>}
             <Button type="submit" className="w-full text-white" disabled={isLoading}>
-              {isLoading ? 'Entrando...' : 'Entrar'}
+              {isLoading ? 'A entrar...' : 'Entrar'}
             </Button>
           </form>
           
           <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-border" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-gray-400">OU</span>
-            </div>
+            <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
+            <div className="relative flex justify-center text-xs uppercase"><span className="bg-card px-2 text-gray-400">OU</span></div>
           </div>
 
           <Button variant="outline" className="w-full" asChild>
             <a href={githubAuthUrl}>
-              <Github className="mr-2 h-4 w-4" />
-              Entrar com GitHub
+              <Github className="mr-2 h-4 w-4" /> Entrar com GitHub
             </a>
           </Button>
 
           <p className="text-center text-sm text-gray-400 mt-6">
             Não tem uma conta?{' '}
             <Link to="/cadastrar" className="font-medium text-primary hover:underline">
-              Cadastre-se
+              Registe-se
             </Link>
           </p>
         </div>
@@ -140,3 +106,4 @@ const Entrar: React.FC = () => {
 };
 
 export default Entrar;
+
