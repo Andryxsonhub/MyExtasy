@@ -1,25 +1,17 @@
-// frontend/src/components/EditProfileModal.tsx
+// frontend/src/components/EditProfileModal.tsx (VERSÃO COM RECARREGAMENTO)
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import api from '../services/api';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Textarea } from './ui/textarea'; // Um componente para caixas de texto maiores
-import { X } from 'lucide-react'; // Ícone para fechar
+import { Textarea } from './ui/textarea';
+import { X, Camera } from 'lucide-react';
 
-// Reutilizamos a interface UserData, mas tornamos todos os campos opcionais
-// para o caso de o usuário ainda não ter carregado
 interface UserData {
-  id?: number;
-  name?: string;
-  email?: string;
-  bio?: string | null;
-  location?: string | null;
-  profilePictureUrl?: string | null; // Adicionado para consistência
+  id?: number; name?: string; email?: string; bio?: string | null; location?: string | null; profilePictureUrl?: string | null;
 }
 
-// Definimos as propriedades que o modal receberá
 interface EditProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -28,36 +20,67 @@ interface EditProfileModalProps {
 }
 
 const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, currentUser, onUpdateSuccess }) => {
-  // Estados para controlar os campos do formulário
   const [name, setName] = useState('');
   const [bio, setBio] = useState('');
   const [location, setLocation] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // useEffect para preencher o formulário quando o modal for aberto
-  // com os dados atuais do usuário
   useEffect(() => {
     if (currentUser) {
       setName(currentUser.name || '');
       setBio(currentUser.bio || '');
       setLocation(currentUser.location || '');
+      setImagePreview(null); 
+      setImageFile(null);
     }
-  }, [currentUser, isOpen]); // Roda sempre que o usuário ou o estado de abertura mudam
+  }, [currentUser, isOpen]);
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      setImagePreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
 
-    const updatedData = { name, bio, location };
-
     try {
-      // Chamada para a API para ATUALIZAR o perfil
-      const response = await api.put('/users/profile', updatedData);
+      let updatedUserDataFromServer = { ...currentUser };
+
+      if (imageFile) {
+        const formData = new FormData();
+        formData.append('avatar', imageFile);
+        const imageResponse = await api.put('/users/profile/avatar', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        updatedUserDataFromServer = imageResponse.data;
+      }
       
-      onUpdateSuccess(response.data); // Envia os dados atualizados de volta para a página
-      onClose(); // Fecha o modal
+      const textData = { name, bio, location };
+      const textResponse = await api.put('/users/profile', textData);
+      
+      const finalUserData = { ...updatedUserDataFromServer, ...textResponse.data };
+
+      onUpdateSuccess(finalUserData);
+      onClose();
+
+      // ==========================================================
+      // LINHA CRÍTICA: Força o recarregamento da página inteira
+      // para que todos os componentes mostrem a nova foto.
+      // ==========================================================
+      window.location.reload();
 
     } catch (err) {
       console.error("Erro ao atualizar perfil:", err);
@@ -67,22 +90,41 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, cu
     }
   };
 
-  // Se o modal não estiver aberto, não renderiza nada
-  if (!isOpen) {
-    return null;
-  }
+  if (!isOpen) return null;
+
+  const profileImageUrl = currentUser?.profilePictureUrl
+    ? `${import.meta.env.VITE_API_URL}${currentUser.profilePictureUrl}`
+    : 'https://static.vecteezy.com/system/resources/thumbnails/009/292/244/small/default-avatar-icon-of-social-media-user-vector.jpg';
 
   return (
-    // Fundo escuro semi-transparente que cobre a tela
     <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
-      {/* Container do Modal */}
-      <div className="bg-card border border-border rounded-lg shadow-xl w-full max-w-lg p-6 relative">
-        {/* Botão de Fechar */}
+      <div className="bg-card border border-border rounded-lg shadow-xl w-full max-w-lg p-8 relative">
         <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white">
           <X size={24} />
         </button>
 
         <h2 className="text-2xl font-bold text-white mb-6">Editar Perfil</h2>
+
+        <div className="flex justify-center mb-6">
+          <div className="relative group cursor-pointer" onClick={handleAvatarClick}>
+            <img
+              src={imagePreview || profileImageUrl}
+              alt="Foto de perfil"
+              className="w-32 h-32 rounded-full object-cover border-4 border-primary"
+            />
+            <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+              <Camera className="text-white" size={32} />
+            </div>
+          </div>
+        </div>
+        
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleImageChange}
+          className="hidden"
+          accept="image/png, image/jpeg, image/gif"
+        />
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -112,4 +154,3 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, cu
 };
 
 export default EditProfileModal;
-

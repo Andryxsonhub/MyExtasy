@@ -1,5 +1,4 @@
-
-// src/components/Header.tsx (VERSÃO COM CONTADOR DE PIMENTAS)
+// src/components/Header.tsx (VERSÃO COMPLETA E CORRIGIDA)
 
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
@@ -7,9 +6,7 @@ import { Button } from './ui/button';
 import { useAuth } from '../contexts/AuthProvider';
 import newLogo from '../assets/logo_sem_fundo_limpo.png';
 import api from '../services/api'; 
-
 import PimentaShopModal from './PimentaShopModal';
-
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const Header: React.FC = () => {
@@ -32,6 +29,11 @@ const Header: React.FC = () => {
     }
   };
 
+  // LÓGICA CORRIGIDA PARA MONTAR A URL DO AVATAR
+  const avatarUrl = user?.profilePictureUrl
+    ? `${import.meta.env.VITE_API_URL}${user.profilePictureUrl}`
+    : undefined;
+
   return (
     <> 
       <header className="bg-background/95 fixed top-0 w-full z-50 border-b border-border">
@@ -42,8 +44,7 @@ const Header: React.FC = () => {
             <span className="text-xl font-bold text-white mt-0.5 hidden sm:inline">MyExtasyClub</span>
           </NavLink>
 
-
-          {/* --- NAVEGAÇÃO PARA USUÁRIOS LOGADOS --- */}
+          {/* --- NAVEGAÇÃO PARA USUÁRIOS LOGADOS (RESTAURADA) --- */}
           {isLoggedIn && (
             <nav className="hidden md:flex items-center space-x-6">
                 <NavLink to="/home" className={({ isActive }) => `text-sm font-medium transition-colors ${isActive ? 'text-primary' : 'text-white hover:text-gray-300'}`}>Home</NavLink>
@@ -56,7 +57,7 @@ const Header: React.FC = () => {
             </nav>
           )}
           
-          {/* --- NAVEGAÇÃO PARA VISITANTES --- */}
+          {/* --- NAVEGAÇÃO PARA VISITANTES (RESTAURADA) --- */}
           {!isLoggedIn && (
             <nav className="hidden md:flex items-center space-x-6">
                 <NavLink to="/sobre" className={({ isActive }) => `text-sm font-medium transition-colors ${isActive ? 'text-primary' : 'text-white hover:text-gray-300'}`}>Sobre</NavLink>
@@ -65,18 +66,12 @@ const Header: React.FC = () => {
           
           <div className="flex items-center space-x-4">
             {isLoggedIn ? (
-              // --- AVATAR E BOTÕES LOGADOS ---
               <>
-                {/* =========================================================
-                == ALTERAÇÃO AQUI: Adição do contador de saldo de pimentas ==
-                ==========================================================
-                */}
                 <div className="hidden sm:flex items-center gap-2 bg-black/30 px-3 py-1.5 rounded-full border border-gray-700">
                   <span className="text-xl" role="img" aria-label="pimenta">🌶️</span>
                   <span className="text-base font-bold text-white">{user?.pimentaBalance ?? 0}</span>
                 </div>
 
-                {/* BOTÃO PARA COMPRAR PIMENTAS */}
                 <Button 
                   onClick={() => setShopOpen(true)} 
                   variant="destructive" 
@@ -87,27 +82,23 @@ const Header: React.FC = () => {
                 
                 <NavLink to="/meu-perfil">
                   <Avatar className="h-9 w-9">
-                    <AvatarImage src={user?.photos?.[0]?.value} alt={user?.username} />
-                    <AvatarFallback>{user?.username?.charAt(0).toUpperCase()}</AvatarFallback>
+                    <AvatarImage src={avatarUrl} alt={user?.name} />
+                    <AvatarFallback>{user?.name?.substring(0, 2).toUpperCase()}</AvatarFallback>
                   </Avatar>
                 </NavLink>
 
                 <Button onClick={handleLogout} variant="ghost" className="text-white hidden sm:inline-flex">Sair</Button>
-
               </>
             ) : (
-                // --- BOTÕES DE ENTRAR E CADASTRAR ---
-                <div className="flex items-center space-x-2">
-                  <NavLink to="/entrar"><Button variant="ghost" className="text-white">Entrar</Button></NavLink>
-                  <NavLink to="/cadastrar"><Button>Cadastrar</Button></NavLink>
-                </div>
-              )}
+              <div className="flex items-center space-x-2">
+                <NavLink to="/entrar"><Button variant="ghost" className="text-white">Entrar</Button></NavLink>
+                <NavLink to="/cadastrar"><Button>Cadastrar</Button></NavLink>
+              </div>
+            )}
           </div>
-
         </div>
       </header>
 
-      {/* RENDERIZA O MODAL */}
       <PimentaShopModal 
         isOpen={isShopOpen} 
         onClose={() => setShopOpen(false)} 
