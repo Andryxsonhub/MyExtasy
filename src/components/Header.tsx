@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 // src/components/Header.tsx (VERSÃO COM CONTADOR DE PIMENTAS)
+=======
+// src/components/Header.tsx (VERSÃO CORRIGIDA E FINAL)
+>>>>>>> b89d63eae6c51ed8f94be5695b2a3db6f2dc67bd
 
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
@@ -6,7 +10,10 @@ import { Button } from './ui/button';
 import { useAuth } from '../contexts/AuthProvider';
 import newLogo from '../assets/logo_sem_fundo_limpo.png';
 import api from '../services/api'; 
+<<<<<<< HEAD
 import PimentaShopModal from './PimentaShopModal';
+=======
+>>>>>>> b89d63eae6c51ed8f94be5695b2a3db6f2dc67bd
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
@@ -40,6 +47,7 @@ const Header: React.FC = () => {
             <span className="text-xl font-bold text-white mt-0.5 hidden sm:inline">MyExtasyClub</span>
           </NavLink>
 
+<<<<<<< HEAD
           {/* --- NAVEGAÇÃO PARA USUÁRIOS LOGADOS --- */}
           {isLoggedIn && (
             <nav className="hidden md:flex items-center space-x-6">
@@ -100,6 +108,47 @@ const Header: React.FC = () => {
                 </div>
               )}
           </div>
+=======
+        {/* --- NAVEGAÇÃO PARA USUÁRIOS LOGADOS --- */}
+        {isLoggedIn && (
+          <nav className="hidden md:flex items-center space-x-6">
+              <NavLink to="/home" className={({ isActive }) => `text-sm font-medium transition-colors ${isActive ? 'text-primary' : 'text-white hover:text-gray-300'}`}>Home</NavLink>
+              <NavLink to="/meu-perfil" className={({ isActive }) => `text-sm font-medium transition-colors ${isActive ? 'text-primary' : 'text-white hover:text-gray-300'}`}>Meu Perfil</NavLink>
+              <NavLink to="/explorar" className={({ isActive }) => `text-sm font-medium transition-colors ${isActive ? 'text-primary' : 'text-white hover:text-gray-300'}`}>Explorar</NavLink>
+              <NavLink to="/lives" className={({ isActive }) => `text-sm font-medium transition-colors ${isActive ? 'text-primary' : 'text-white hover:text-gray-300'}`}>Lives</NavLink>
+              <NavLink to="/planos" className={({ isActive }) => `text-sm font-medium transition-colors ${isActive ? 'text-primary' : 'text-white hover:text-gray-300'}`}>Planos</NavLink>
+              <NavLink to="/sugestoes" className={({ isActive }) => `text-sm font-medium transition-colors ${isActive ? 'text-primary' : 'text-white hover:text-gray-300'}`}>Sugestões</NavLink>
+              <NavLink to="/sobre" className={({ isActive }) => `text-sm font-medium transition-colors ${isActive ? 'text-primary' : 'text-white hover:text-gray-300'}`}>Sobre</NavLink>
+          </nav>
+        )}
+        
+        {/* --- NAVEGAÇÃO PARA VISITANTES (APENAS COM O LINK "SOBRE") --- */}
+        {!isLoggedIn && (
+          <nav className="hidden md:flex items-center space-x-6">
+              <NavLink to="/sobre" className={({ isActive }) => `text-sm font-medium transition-colors ${isActive ? 'text-primary' : 'text-white hover:text-gray-300'}`}>Sobre</NavLink>
+          </nav>
+        )}
+        
+        <div className="flex items-center space-x-4">
+          {isLoggedIn ? (
+            // --- AVATAR E BOTÃO DE SAIR ---
+            <>
+              <Button onClick={handleLogout} variant="ghost" className="text-white hidden sm:inline-flex">Sair</Button>
+              <NavLink to="/meu-perfil">
+                <Avatar className="h-9 w-9">
+                  <AvatarImage src={user?.photos?.[0]?.value} alt={user?.username} />
+                  <AvatarFallback>{user?.username?.charAt(0).toUpperCase()}</AvatarFallback>
+                </Avatar>
+              </NavLink>
+            </>
+          ) : (
+             // --- BOTÕES DE ENTRAR E CADASTRAR ---
+             <div className="flex items-center space-x-2">
+               <NavLink to="/entrar"><Button variant="ghost" className="text-white">Entrar</Button></NavLink>
+               <NavLink to="/cadastrar"><Button>Cadastrar</Button></NavLink>
+             </div>
+           )}
+>>>>>>> b89d63eae6c51ed8f94be5695b2a3db6f2dc67bd
         </div>
       </header>
 
