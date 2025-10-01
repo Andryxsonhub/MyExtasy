@@ -22,22 +22,23 @@ const Entrar: React.FC = () => {
     setError(null);
 
     try {
-      // Chama a rota de login correta.
+      // A chamada agora está limpa, pois o prefixo '/api' já é tratado pelo 'api.ts'.
       const response = await api.post('/login', {
         email: email,
         password: password,
       });
 
-      // Guarda o token e atualiza o estado.
+      // Guarda o token e atualiza o estado de autenticação.
       const { token } = response.data;
       localStorage.setItem('authToken', token);
       setIsLoggedIn(true);
       
-      // Redireciona para o perfil após o login.
+      // Redireciona o usuário para a página de perfil após o login bem-sucedido.
       navigate('/meu-perfil'); 
 
     } catch (caughtError: unknown) {
       let errorMessage = 'Ocorreu um erro. Tente novamente.';
+      // Tratamento de erro para extrair a mensagem específica da resposta da API.
       if (typeof caughtError === 'object' && caughtError !== null && 'isAxiosError' in caughtError) {
         const axiosError = caughtError as { response?: { data?: { message?: string } } };
         errorMessage = axiosError.response?.data?.message || 'E-mail ou senha inválidos.';
@@ -50,7 +51,7 @@ const Entrar: React.FC = () => {
     }
   };
   
-  // URL para autenticação com o GitHub, agora fixa e sem depender de .env.
+  // URL para autenticação com o GitHub.
   const githubAuthUrl = `https://myextasyclub-backend.onrender.com/auth/github`;
 
   return (
