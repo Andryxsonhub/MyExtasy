@@ -1,15 +1,15 @@
-// frontend/src/components/ProfileTabs.tsx
+// src/components/ProfileTabs.tsx (VERSÃO FINAL LIMPA)
 
-import React, { useState } from 'react';
-import './ProfileTabs.css'; // Vamos criar este arquivo CSS em seguida
+// ALTERAÇÃO: Removemos o '{ useState }' que não estava sendo usado.
+import React from 'react';
+import './ProfileTabs.css';
 
 interface ProfileTabsProps {
-  activeTab: string; // Para controlar qual aba está ativa (recebido de fora)
-  onTabChange: (tabName: string) => void; // Para notificar o componente pai sobre a mudança de aba
+  activeTab: string;
+  onTabChange: (tabName: string) => void;
 }
 
 const ProfileTabs: React.FC<ProfileTabsProps> = ({ activeTab, onTabChange }) => {
-  // Array de objetos para configurar nossas abas de forma fácil
   const tabs = [
     { name: 'Publicações', id: 'posts' },
     { name: 'Sobre', id: 'about' },
@@ -30,7 +30,6 @@ const ProfileTabs: React.FC<ProfileTabsProps> = ({ activeTab, onTabChange }) => 
           </button>
         ))}
       </div>
-      {/* Conteúdo da aba ativa será renderizado pelo componente pai */}
     </div>
   );
 };
