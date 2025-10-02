@@ -1,4 +1,4 @@
-// src/components/registration/RegistrationFlow.tsx (VERSÃO FINAL COM CORREÇÃO DE DUPLICATAS)
+// src/components/registration/RegistrationFlow.tsx (VERSÃO ATUALIZADA)
 
 import React, { useState } from 'react';
 import api from '@/services/api'; 
@@ -18,6 +18,7 @@ import AuthStep from '@/components/registration/AuthStep';
 export type FormData = {
   profileType?: string;
   username?: string;
+  dateOfBirth?: Date; // 1. CAMPO ADICIONADO AQUI
   email?: string;
   password?: string;
   interests?: string[];
@@ -60,11 +61,10 @@ const RegistrationFlow = () => {
     setError(null);
     setSuccessMessage(null);
     
-    // ================== INÍCIO DA CORREÇÃO ==================
-    // Construímos o objeto final de forma explícita para evitar chaves duplicadas.
     const userData = {
       profileType: formData.profileType,
       username: formData.username,
+      dateOfBirth: formData.dateOfBirth, // 2. DADO INCLUÍDO NO OBJETO FINAL
       email: authData.email,
       password: authData.password,
       interests: formData.interests || [],
@@ -74,13 +74,12 @@ const RegistrationFlow = () => {
       favoritedSuggestions: formData.favoritedSuggestions || [],
     };
 
-    // Verificação de segurança para garantir que os dados essenciais estão presentes
-    if (!userData.email || !userData.password || !userData.username || !userData.profileType) {
-        setError("Dados essenciais (tipo de perfil, e-mail, senha ou nome de usuário) estão faltando. Por favor, reinicie o cadastro.");
+    // 3. VERIFICAÇÃO DE SEGURANÇA ATUALIZADA
+    if (!userData.email || !userData.password || !userData.username || !userData.profileType || !userData.dateOfBirth) {
+        setError("Dados essenciais (tipo de perfil, nome, data de nascimento, e-mail ou senha) estão faltando. Por favor, reinicie o cadastro.");
         setIsLoading(false);
         return;
     }
-    // =================== FIM DA CORREÇÃO ===================
 
     try {
       const response = await api.post('/register', userData);
