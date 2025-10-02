@@ -1,4 +1,4 @@
-// src/pages/UserProfilePage.tsx (VERSÃO ABSOLUTAMENTE COMPLETA E FINAL)
+// src/pages/UserProfilePage.tsx (VERSÃO COMPLETA E FINAL COM GALERIA)
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -15,10 +15,19 @@ import { PlusCircle } from 'lucide-react';
 import type { UserData, Post } from '../types/types';
 import UploadPhotoModal from '../components/UploadPhotoModal';
 
+// 1. DEFINIMOS O TIPO PARA UMA FOTO INDIVIDUAL
+interface Photo {
+  id: number;
+  url: string;
+  description: string | null;
+  createdAt: string;
+}
+
 const UserProfilePage: React.FC = () => {
   const navigate = useNavigate();
   const [userData, setUserData] = useState<UserData | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
+  const [photos, setPhotos] = useState<Photo[]>([]); // 2. CRIAMOS O NOVO ESTADO PARA AS FOTOS
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('posts');
@@ -33,41 +42,44 @@ const UserProfilePage: React.FC = () => {
 
   const fetchData = async () => {
     const token = localStorage.getItem('authToken');
-    if (!token) { 
-      navigate('/entrar'); 
-      return; 
+    if (!token) {  
+      navigate('/entrar');  
+      return;  
     }
     
     try {
-      // Não resetamos o loading aqui para a atualização ser mais suave
       setError(null);
       
-      const [profileResponse, postsResponse] = await Promise.all([
+      // 3. ATUALIZAMOS A BUSCA PARA INCLUIR AS FOTOS
+      const [profileResponse, postsResponse, photosResponse] = await Promise.all([
         api.get('/users/profile'),
-        api.get('/posts')
+        api.get('/posts'),
+        api.get('/users/photos') // <-- A NOVA CHAMADA DE API!
       ]);
       
       setUserData(profileResponse.data);
       setPosts(postsResponse.data);
+      setPhotos(photosResponse.data); // <-- GUARDAMOS AS FOTOS NO ESTADO
 
     } catch (err) {
       setError('Erro ao carregar os dados do perfil.');
       console.error('Erro ao buscar dados:', err);
     } finally {
-      // Garantimos que o loading inicial termine
       if (isLoading) setIsLoading(false);
     }
   };
   
-  const handleUpdateSuccess = (updatedUser: UserData) => { 
-    setUserData(updatedUser); 
+  const handleUpdateSuccess = (updatedUser: UserData) => {  
+    setUserData(updatedUser);  
   };
 
   useEffect(() => {
-    // Definimos isLoading como true apenas na primeira carga
     setIsLoading(true);
     fetchData();
   }, [navigate]);
+
+  // Buscamos a URL base da API do arquivo .env
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
   return (
     <Layout>
@@ -81,14 +93,14 @@ const UserProfilePage: React.FC = () => {
           <div className="mt-8 flex flex-col md:flex-row gap-8">
             <div className="w-full md:w-2/3">
               <div className="bg-card p-6 rounded-lg shadow-lg">
-                <ProfileTabs 
-                  activeTab={activeTab} 
+                <ProfileTabs  
+                  activeTab={activeTab}  
                   onTabChange={setActiveTab}
                 />
                 <div className="mt-6">
                   {activeTab === 'posts' && (
                     <>
-                      <CreatePost 
+                      <CreatePost  
                         userProfilePicture={userData.profilePictureUrl}
                         onPostCreated={fetchData}
                       />
@@ -104,6 +116,7 @@ const UserProfilePage: React.FC = () => {
                     </div>
                   )}
                   
+                  {/* 4. ATUALIZAMOS A VISUALIZAÇÃO DA ABA DE FOTOS */}
                   {activeTab === 'photos' && (
                     <div>
                       <div className="flex justify-between items-center mb-6">
@@ -113,10 +126,26 @@ const UserProfilePage: React.FC = () => {
                           Adicionar Nova Foto
                         </Button>
                       </div>
-                      <div className="text-center text-gray-500 py-16 border-2 border-dashed border-gray-700 rounded-lg">
-                        <p>Nenhuma foto publicada ainda.</p>
-                        <p className="text-sm mt-1">Que tal adicionar a primeira?</p>
-                      </div>
+
+                      {/* Lógica condicional: ou mostra a galeria, ou mostra a mensagem */}
+                      {photos.length > 0 ? (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                          {photos.map((photo) => (
+                            <div key={photo.id} className="relative aspect-square bg-gray-800 rounded-lg overflow-hidden">
+                              <img
+                                src={`${API_URL}${photo.url}`}
+                                alt={photo.description || 'Foto do usuário'}
+                                className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center text-gray-500 py-16 border-2 border-dashed border-gray-700 rounded-lg">
+                          <p>Nenhuma foto publicada ainda.</p>
+                          <p className="text-sm mt-1">Que tal adicionar a primeira?</p>
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -138,17 +167,17 @@ const UserProfilePage: React.FC = () => {
         )}
       </div>
       
-      <EditProfileModal 
-        isOpen={isEditModalOpen} 
-        onClose={closeEditModal} 
-        currentUser={userData} 
-        onUpdateSuccess={handleUpdateSuccess} 
+      <EditProfileModal  
+        isOpen={isEditModalOpen}  
+        onClose={closeEditModal}  
+        currentUser={userData}  
+        onUpdateSuccess={handleUpdateSuccess}  
       />
       
-      <UploadPhotoModal 
-        isOpen={isUploadModalOpen} 
+      <UploadPhotoModal  
+        isOpen={isUploadModalOpen}  
         onClose={closeUploadModal}
-        onUploadSuccess={fetchData} 
+        onUploadSuccess={fetchData}  
       />
     </Layout>
   );
