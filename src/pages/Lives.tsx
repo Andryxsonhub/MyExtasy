@@ -1,35 +1,67 @@
-// src/pages/Lives.tsx (VERSÃO CORRIGIDA)
+// src/pages/Lives.tsx (VERSÃO FINAL COM TEMPO REAL)
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import { Link } from 'react-router-dom';
 import { Video, Wifi } from 'lucide-react';
+import api from '@/services/api';
+import LiveControls from '@/components/LiveControls';
+import { io } from 'socket.io-client';
 
-const mockLives = [
-  {
-    id: '1',
-    title: 'Desenvolvendo a feature de chat ao vivo',
-    streamerName: 'Dev_Master',
-    thumbnailUrl: 'https://via.placeholder.com/400x225.png/8B5CF6/FFFFFF?text=Live+de+C%C3%B3digo',
-    category: 'Programação',
-  },
-  {
-    id: '2',
-    title: 'Analisando o design do novo perfil',
-    streamerName: 'UX_Guru',
-    thumbnailUrl: 'https://via.placeholder.com/400x225.png/10B981/FFFFFF?text=Live+de+Design',
-    category: 'Design',
-  },
-  {
-    id: '3',
-    title: 'Sessão de Perguntas e Respostas',
-    streamerName: 'Comunidade',
-    thumbnailUrl: 'https://via.placeholder.com/400x225.png/F59E0B/FFFFFF?text=Q%26A+ao+Vivo',
-    category: 'Bate-papo',
-  },
-];
+interface LiveUser {
+  id: number;
+  name: string;
+  profilePictureUrl: string | null;
+}
 
-const Lives = () => {
+const Lives: React.FC = () => {
+  const [liveUsers, setLiveUsers] = useState<LiveUser[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Busca inicial de dados via API
+  useEffect(() => {
+    const fetchLiveUsers = async () => {
+      setIsLoading(true);
+      try {
+        const response = await api.get('/live/active');
+        if (Array.isArray(response.data)) {
+          setLiveUsers(response.data);
+        }
+      } catch (error) {
+        console.error("Erro ao buscar usuários ao vivo:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchLiveUsers();
+  }, []);
+
+  // Lógica de tempo real com Socket.IO
+  useEffect(() => {
+    const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:3333');
+
+    // Ouve pelo evento 'live_started' emitido pelo backend
+    socket.on('live_started', (newLiveUser: LiveUser) => {
+      setLiveUsers((currentUsers) => {
+        // Adiciona o novo usuário apenas se ele já não estiver na lista
+        if (!currentUsers.some(user => user.id === newLiveUser.id)) {
+          return [...currentUsers, newLiveUser];
+        }
+        return currentUsers;
+      });
+    });
+
+    // Ouve pelo evento 'live_stopped' emitido pelo backend
+    socket.on('live_stopped', (data: { userId: number }) => {
+      setLiveUsers((currentUsers) => currentUsers.filter(user => user.id !== data.userId));
+    });
+
+    // Limpa a conexão ao desmontar o componente
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
+
   return (
     <Layout>
       <div className="bg-background text-foreground min-h-screen">
@@ -37,25 +69,33 @@ const Lives = () => {
           <div className="text-center mb-10">
             <h1 className="text-4xl font-extrabold text-white mb-2">Lives</h1>
             <p className="text-lg text-gray-400">
-              Acompanhe nossas transmissões ao vivo e eventos futuros.
+              Acompanhe nossas transmissões ao vivo ou comece a sua!
             </p>
           </div>
 
-          {mockLives.length > 0 ? (
+          <div className="mb-12 max-w-lg mx-auto">
+            <LiveControls />
+          </div>
+
+          {isLoading ? (
+            <p className="text-center text-white">Carregando lives...</p>
+          ) : liveUsers.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {mockLives.map(live => (
-                // A MUDANÇA ESTÁ AQUI ABAIXO
-                <Link to={`/live/${live.id}`} key={live.id} className="group block bg-gray-800 rounded-lg overflow-hidden shadow-lg hover:scale-105 transition-transform duration-300">
+              {liveUsers.map(user => (
+                <Link to={`/live/${user.id}`} key={user.id} className="group block bg-gray-800 rounded-lg overflow-hidden shadow-lg hover:scale-105 transition-transform duration-300">
                   <div className="relative">
-                    <img src={live.thumbnailUrl} alt={`Thumbnail da live ${live.title}`} className="w-full h-auto" />
+                    <img
+                      src={user.profilePictureUrl || `https://i.pravatar.cc/400?u=${user.id}`}
+                      alt={`Live de ${user.name}`}
+                      className="w-full h-auto aspect-video object-cover"
+                    />
                     <div className="absolute top-2 left-2 bg-red-600 text-white px-2 py-1 text-sm font-bold rounded flex items-center gap-1">
                       <Wifi size={16} />
                       <span>AO VIVO</span>
                     </div>
                   </div>
                   <div className="p-4">
-                    <h3 className="text-lg font-bold text-white truncate group-hover:text-primary">{live.title}</h3>
-                    <p className="text-gray-400 text-sm">{live.streamerName}</p>
+                    <h3 className="text-lg font-bold text-white truncate group-hover:text-primary">{`Live de ${user.name}`}</h3>
                   </div>
                 </Link>
               ))}
@@ -64,6 +104,7 @@ const Lives = () => {
             <div className="flex flex-col items-center justify-center text-center h-[40vh] text-gray-500">
               <Video className="w-16 h-16 mb-4" />
               <h2 className="text-2xl font-bold text-white">Nenhuma live no momento</h2>
+              <p className="mt-2">Que tal ser o primeiro a começar?</p>
             </div>
           )}
         </div>
