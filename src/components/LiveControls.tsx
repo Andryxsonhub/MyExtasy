@@ -1,100 +1,66 @@
-// src/components/LiveControls.tsx (VERSÃO FINAL CONECTADA)
-
-import React, { useState, useEffect } from 'react';
-import api from '@/services/api';
-import { useAuth } from '@/contexts/AuthProvider';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button } from './ui/button';
-import { Video, VideoOff } from 'lucide-react';
+import api from '@/services/api'; // Seu serviço de API
+import { Video } from 'lucide-react';
 
-// Supondo que o seu useAuth() retorna um objeto 'user' que pode ter a propriedade isLive
-// E uma função para atualizar esse estado. Se não, precisaremos adicionar.
-interface AuthContextType {
-    user: { id: number; isLive?: boolean; } | null;
-    // Precisamos de uma forma de atualizar o status da live no contexto global
-}
+const LiveControls = () => {
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const navigate = useNavigate();
 
-const LiveControls: React.FC = () => {
-  const { user } = useAuth(); // Pegamos o usuário do nosso contexto de autenticação
-  const navigate = useNavigate();
-  
-  const [isLive, setIsLive] = useState(false); // Vamos controlar o estado localmente por enquanto
-  const [isLoading, setIsLoading] = useState(false);
+    const handleStartLive = async () => {
+        setIsLoading(true);
+        setError(null);
 
-  // No futuro, podemos sincronizar 'isLive' com o estado do usuário no AuthProvider
-  // useEffect(() => {
-  //   if(user) setIsLive(user.isLive || false);
-  // }, [user]);
+        try {
+            // Passo 1: Avisa o backend para criar o registro da live
+            await api.post('/live/start');
+            
+            // Passo 2: Se o passo 1 deu certo, navega para a página da live
+            // A página '/live/me' vai então buscar o token e conectar ao LiveKit
+            navigate('/live/me');
 
-  const handleStartLive = async () => {
-    setIsLoading(true);
-    try {
-      // 1. AVISA O NOSSO BACKEND QUE A LIVE COMEÇOU
-      await api.post('/live/start');
-      setIsLive(true);
-      
-      // 2. REDIRECIONA O USUÁRIO PARA A SUA PRÓPRIA PÁGINA DE LIVE
-      if (user) {
-        navigate(`/live/${user.id}`);
-      }
-    } catch (error) {
-      console.error("Erro ao iniciar a live:", error);
-      alert("Não foi possível iniciar a live. Tente novamente.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+        } catch (err) { // CORREÇÃO: 'err' agora é tratado como 'unknown' por padrão
+            console.error("Erro ao iniciar a live:", err);
 
-  const handleStopLive = async () => {
-    setIsLoading(true);
-    try {
-      // AVISA O NOSSO BACKEND QUE A LIVE ACABOU
-      await api.post('/live/stop');
-      setIsLive(false);
-      // Opcional: redirecionar para a home ou para a página de lives
-      navigate('/lives'); 
-    } catch (error) {
-      console.error("Erro ao parar a live:", error);
-      alert("Não foi possível parar a live. Tente novamente.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+            // Verificação de tipo para tratar o erro de forma segura
+            if (err && typeof err === 'object' && 'response' in err) {
+                const axiosError = err as { response?: { status?: number } };
+                if (axiosError.response?.status === 409) {
+                    setError('Você já tem uma live ativa. Finalize a anterior ou apague-a no banco de dados para testes.');
+                } else {
+                    setError('Não foi possível iniciar a live. Verifique o console do backend.');
+                }
+            } else {
+                // Fallback para erros que não vêm da API
+                setError('Ocorreu um erro inesperado.');
+            }
+            setIsLoading(false);
+        }
+    };
 
-  if (!user) {
-    return null;
-  }
+    return (
+        <div className="bg-gray-800/50 backdrop-blur-sm p-8 rounded-lg shadow-2xl max-w-lg mx-auto text-center border border-gray-700">
+            <h2 className="text-2xl font-bold text-white mb-2">Seu Painel de Controle</h2>
+            <p className="text-gray-400 mb-6">Pronto para começar? Clique para iniciar sua live.</p>
 
-  return (
-    <div className="bg-card border border-border p-6 rounded-lg shadow-lg flex flex-col items-center">
-      <h2 className="text-xl font-bold text-white mb-4">Seu Painel de Controle</h2>
-      {isLive ? (
-        <Button
-          variant="destructive"
-          size="lg"
-          onClick={handleStopLive}
-          disabled={isLoading}
-          className="w-full"
-        >
-          <VideoOff className="w-5 h-5 mr-2" />
-          {isLoading ? 'Encerrando...' : 'Parar Live'}
-        </Button>
-      ) : (
-        <Button
-          size="lg"
-          onClick={handleStartLive}
-          disabled={isLoading}
-          className="w-full bg-green-600 hover:bg-green-700"
-        >
-          <Video className="w-5 h-5 mr-2" />
-          {isLoading ? 'Iniciando...' : 'Iniciar Live'}
-        </Button>
-      )}
-      <p className="text-xs text-gray-400 mt-3">
-        {isLive ? "Você está ao vivo. Clique para encerrar a transmissão." : "Pronto para começar? Clique para iniciar sua live."}
-      </p>
-    </div>
-  );
+            <button
+                onClick={handleStartLive}
+                disabled={isLoading}
+                className="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg shadow-lg hover:bg-green-700 transition-all duration-300 flex items-center justify-center gap-2 disabled:bg-gray-500 disabled:cursor-wait"
+            >
+                <Video size={20} />
+                {isLoading ? 'Iniciando...' : 'Iniciar Live'}
+            </button>
+
+            {error && (
+                <div className="mt-4 p-3 bg-red-900/50 border border-red-700 text-red-300 rounded-lg text-sm">
+                    {error}
+                </div>
+            )}
+        </div>
+    );
 };
 
 export default LiveControls;
+

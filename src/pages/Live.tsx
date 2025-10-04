@@ -1,20 +1,18 @@
-// src/pages/Live.tsx (VERSÃO FINAL COM PLAYER DE VÍDEO + CHAT)
+// src/pages/Live.tsx (VERSÃO FINALÍSSIMA E LIMPA)
 
 import React, { useState, useEffect, FormEvent } from 'react';
-import { useParams } from 'react-router-dom';
+// ALTERAÇÃO: 'useParams' foi removido da linha abaixo, pois não era usado.
+import { useNavigate } from 'react-router-dom';
 import api from '@/services/api';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/contexts/AuthProvider';
 
-// Importações do LiveKit para o player de vídeo
 import { LiveKitRoom, VideoConference } from '@livekit/components-react';
 import '@livekit/components-styles';
 
-// Importações do Socket.IO para o chat
 import { io, Socket } from 'socket.io-client';
 import type { UserData } from '@/types/types';
 
-// LÓGICA DO CHAT REINTEGRADA: Interface para as mensagens do chat
 interface ChatMessage {
   id: string;
   text: string;
@@ -22,35 +20,33 @@ interface ChatMessage {
 }
 
 const LivePage: React.FC = () => {
-    const { id: streamerId } = useParams<{ id: string }>();
+    const navigate = useNavigate();
     const { user } = useAuth();
     
-    // Estados para o LiveKit
     const [token, setToken] = useState<string | null>(null);
-    const [livekitUrl, setLivekitUrl] = useState<string | null>(null);
+    const [wsUrl, setWsUrl] = useState<string | null>(null);
 
-    // LÓGICA DO CHAT REINTEGRADA: Estados para o chat
     const [socket, setSocket] = useState<Socket | null>(null);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [inputValue, setInputValue] = useState('');
     
-    // Efeito para buscar o token de acesso do LiveKit no nosso backend
     useEffect(() => {
         const fetchToken = async () => {
             if (user) {
                 try {
                     const response = await api.get('/live/token');
                     setToken(response.data.token);
-                    setLivekitUrl(response.data.livekitUrl);
+                    setWsUrl(response.data.wsUrl);
                 } catch (error) {
                     console.error('Erro ao buscar token do LiveKit:', error);
+                    alert('Não foi possível conectar à live. Redirecionando...');
+                    navigate('/lives');
                 }
             }
         };
         fetchToken();
-    }, [user]);
+    }, [user, navigate]);
 
-    // LÓGICA DO CHAT REINTEGRADA: Efeito para conectar ao Socket.IO
     useEffect(() => {
         if (user) {
             const newSocket = io(import.meta.env.VITE_API_URL || 'http://localhost:3333');
@@ -59,7 +55,6 @@ const LivePage: React.FC = () => {
         }
     }, [user]);
 
-    // LÓGICA DO CHAT REINTEGRADA: Efeito para ouvir novas mensagens
     useEffect(() => {
         if (socket) {
             const handleNewMessage = (msg: ChatMessage) => {
@@ -70,7 +65,6 @@ const LivePage: React.FC = () => {
         }
     }, [socket]);
 
-    // LÓGICA DO CHAT REINTEGRADA: Função para enviar mensagem
     const handleSendMessage = (e: FormEvent) => {
         e.preventDefault();
         if (inputValue.trim() && user && socket) {
@@ -85,7 +79,7 @@ const LivePage: React.FC = () => {
         }
     };
 
-    if (!token || !livekitUrl) {
+    if (!token || !wsUrl) {
         return (
             <Layout>
                 <div className="flex justify-center items-center h-screen bg-background text-white">
@@ -101,18 +95,15 @@ const LivePage: React.FC = () => {
                 video={true}
                 audio={true}
                 token={token}
-                serverUrl={livekitUrl}
+                serverUrl={wsUrl}
                 data-lk-theme="default"
-                style={{ height: 'calc(100vh - 64px)', paddingTop: '64px' }}
+                style={{ height: 'calc(100vh - 64px)' }}
             >
-                {/* ESTRUTURA VISUAL DE 2 COLUNAS (VÍDEO + CHAT) */}
                 <div className="flex flex-col md:flex-row h-full">
-                    {/* Coluna Principal: Vídeo */}
                     <div className="flex-grow flex flex-col">
                         <VideoConference />
                     </div>
 
-                    {/* Coluna Lateral: Chat ao Vivo */}
                     <div className="w-full md:w-80 lg:w-96 bg-gray-800 flex flex-col flex-shrink-0 border-l border-gray-700 h-full">
                         <div className="p-4 border-b border-gray-700"><h2 className="text-xl font-semibold">Chat ao Vivo</h2></div>
                         <div className="flex-grow p-4 space-y-4 overflow-y-auto">
@@ -121,7 +112,7 @@ const LivePage: React.FC = () => {
                                     <span className={`font-bold ${user && msg.user.id === user.id ? 'text-green-400' : 'text-blue-400'}`}>
                                         {user && msg.user.id === user.id ? 'Você' : msg.user.name}:
                                     </span> 
-                                    <p className="break-words">{msg.text}</p>
+                                    <p className="break-words text-white">{msg.text}</p>
                                 </div>
                             ))}
                         </div>
@@ -132,7 +123,7 @@ const LivePage: React.FC = () => {
                                 value={inputValue}
                                 onChange={(e) => setInputValue(e.target.value)}
                                 disabled={!user || !socket}
-                                className="w-full p-2 rounded-lg bg-gray-700 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50" 
+                                className="w-full p-2 rounded-lg bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50" 
                             />
                             <button 
                                 type="submit" 

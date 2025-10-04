@@ -40,10 +40,16 @@ const Hero = () => {
                 id="gender" 
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500 text-black"
               >
-                <option>Selecione seu gênero</option>
-                <option>Homem</option>
-                <option>Mulher</option>
-                <option>Casal</option>
+                {/* VALORES ATUALIZADOS AQUI */}
+                <option value="">Selecione seu gênero</option>
+                <option value="Homem">Homem</option>
+                <option value="Mulher">Mulher</option>
+                <option value="Casal (Ele/Ela)">Casal (Ele/Ela)</option>
+                <option value="Casal (Ele/Ele)">Casal (Ele/Ele)</option>
+                <option value="Casal (Ela/Ela)">Casal (Ela/Ela)</option>
+                <option value="Transexual">Transexual</option>
+                <option value="Crossdresser (CD)">Crossdresser (CD)</option>
+                <option value="Travesti">Travesti</option>
               </select>
             </div>
             <button 
@@ -65,4 +71,3 @@ const Hero = () => {
 };
 
 export default Hero;
-
