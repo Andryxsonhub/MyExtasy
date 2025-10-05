@@ -1,110 +1,126 @@
+// src/pages/Entrar.tsx (VERSÃO FINAL SEM AVISOS)
+
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import api from '../services/api'; 
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
-import { useAuth } from '../hooks/useAuth';
-import { Github } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthProvider';
+import api from '../services/api';
+// --- ADIÇÃO 1: Importação do AxiosError para tipagem de erro ---
+import { AxiosError } from 'axios';
+
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Eye, EyeOff } from 'lucide-react';
+
+const loginSchema = z.object({
+  email: z.string().email({ message: 'Por favor, insira um e-mail válido.' }),
+  password: z.string().min(6, { message: 'A senha deve ter pelo menos 6 caracteres.' }),
+});
+
+type LoginFormData = z.infer<typeof loginSchema>;
 
 const Entrar: React.FC = () => {
-  const { setIsLoggedIn } = useAuth();
   const navigate = useNavigate();
+  const { setUser, setIsLoggedIn } = useAuth();
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+  });
 
-  const handleLogin = async (event: React.FormEvent) => {
-    event.preventDefault();
-    setIsLoading(true);
-    setError(null);
-
+  const handleLogin = async (data: LoginFormData) => {
+    setApiError(null);
     try {
-      // A chamada agora está limpa, pois o prefixo '/api' já é tratado pelo 'api.ts'.
-      const response = await api.post('/login', {
-        email: email,
-        password: password,
-      });
-
-      // Guarda o token e atualiza o estado de autenticação.
-      const { token } = response.data;
+      const response = await api.post('/auth/login', data);
+      const { token, user } = response.data;
       localStorage.setItem('authToken', token);
+      setUser(user);
       setIsLoggedIn(true);
+      navigate('/home');
+    } catch (error) {
+      // --- CORREÇÃO 2: Lógica de erro atualizada para ser type-safe ---
+      let errorMessage = 'Erro ao tentar fazer login. Verifique suas credenciais.';
       
-      // Redireciona o usuário para a página de perfil após o login bem-sucedido.
-      navigate('/meu-perfil'); 
-
-    } catch (caughtError: unknown) {
-      let errorMessage = 'Ocorreu um erro. Tente novamente.';
-      // Tratamento de erro para extrair a mensagem específica da resposta da API.
-      if (typeof caughtError === 'object' && caughtError !== null && 'isAxiosError' in caughtError) {
-        const axiosError = caughtError as { response?: { data?: { message?: string } } };
-        errorMessage = axiosError.response?.data?.message || 'E-mail ou senha inválidos.';
-      } else if (caughtError instanceof Error) {
-        errorMessage = caughtError.message;
+      if (error instanceof AxiosError && error.response) {
+        // Agora acessamos a mensagem de erro da API de forma segura
+        errorMessage = error.response.data?.message || errorMessage;
       }
-      setError(errorMessage);
-    } finally {
-      setIsLoading(false);
+      
+      setApiError(errorMessage);
     }
   };
-  
-  // URL para autenticação com o GitHub.
-  const githubAuthUrl = `https://myextasyclub-backend.onrender.com/auth/github`;
 
   return (
-    <div className="container mx-auto px-4 py-12 flex items-center justify-center">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-extrabold text-white mb-2">Entrar na Sua Conta</h1>
-          <p className="text-gray-400">Bem-vindo de volta! Faça o login para continuar.</p>
-        </div>
-        <div className="bg-card border border-border rounded-lg shadow-lg p-8">
-          <form className="space-y-6" onSubmit={handleLogin}>
-            <div>
-              <Label htmlFor="email" className="text-gray-300">E-mail</Label>
+    <div className="flex items-center justify-center min-h-screen bg-background p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl">Entrar na sua Conta</CardTitle>
+          <CardDescription>Bem-vindo de volta! Faça login para continuar.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit(handleLogin)} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">E-mail</Label>
               <Input
-                id="email" type="email" placeholder="seuemail@exemplo.com" required className="mt-2"
-                value={email} onChange={(e) => { setEmail(e.target.value); setError(null); }} disabled={isLoading}
+                id="email"
+                type="email"
+                placeholder="seuemail@exemplo.com"
+                {...register('email')}
+                className={errors.email ? 'border-red-500' : ''}
               />
+              {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>}
             </div>
-            <div>
-              <Label htmlFor="password" className="text-gray-300">Senha</Label>
-              <Input
-                id="password" type="password" placeholder="••••••••" required className="mt-2"
-                value={password} onChange={(e) => { setPassword(e.target.value); setError(null); }} disabled={isLoading}
-              />
+            
+            <div className="space-y-2">
+              <Label htmlFor="password">Senha</Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="********"
+                  {...register('password')}
+                  className={errors.password ? 'border-red-500' : ''}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-white"
+                  aria-label={showPassword ? 'Esconder senha' : 'Mostrar senha'}
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
+              {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>}
             </div>
-            {error && <p className="text-sm text-red-500 text-center">{error}</p>}
-            <Button type="submit" className="w-full text-white" disabled={isLoading}>
-              {isLoading ? 'A entrar...' : 'Entrar'}
+            
+            {apiError && <p className="text-red-500 text-sm text-center">{apiError}</p>}
+            
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              {isSubmitting ? 'Entrando...' : 'Entrar'}
             </Button>
           </form>
-          
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
-            <div className="relative flex justify-center text-xs uppercase"><span className="bg-card px-2 text-gray-400">OU</span></div>
-          </div>
 
-          <Button variant="outline" className="w-full" asChild>
-            <a href={githubAuthUrl}>
-              <Github className="mr-2 h-4 w-4" /> Entrar com GitHub
-            </a>
-          </Button>
-
-          <p className="text-center text-sm text-gray-400 mt-6">
+        </CardContent>
+        <CardFooter className="flex justify-center">
+          <p className="text-sm text-gray-400">
             Não tem uma conta?{' '}
-            <Link to="/cadastrar" className="font-medium text-primary hover:underline">
-              Registe-se
-            </Link>
+            <NavLink to="/cadastrar" className="text-primary hover:underline">
+              Registre-se
+            </NavLink>
           </p>
-        </div>
-      </div>
+        </CardFooter>
+      </Card>
     </div>
   );
 };
 
 export default Entrar;
-
