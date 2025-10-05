@@ -1,4 +1,4 @@
-// src/pages/Entrar.tsx (VERSÃO FINAL SEM AVISOS)
+// src/pages/Entrar.tsx (VERSÃO COM URL CORRIGIDA)
 
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -7,7 +7,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthProvider';
 import api from '../services/api';
-// --- ADIÇÃO 1: Importação do AxiosError para tipagem de erro ---
 import { AxiosError } from 'axios';
 
 import { Button } from '@/components/ui/button';
@@ -40,18 +39,19 @@ const Entrar: React.FC = () => {
   const handleLogin = async (data: LoginFormData) => {
     setApiError(null);
     try {
-      const response = await api.post('/auth/login', data);
+      // --- CORREÇÃO DA URL AQUI ---
+      // Removemos o '/auth' extra. A baseURL do 'api' já contém '/api'.
+      const response = await api.post('/login', data); 
+      
       const { token, user } = response.data;
       localStorage.setItem('authToken', token);
       setUser(user);
       setIsLoggedIn(true);
       navigate('/home');
     } catch (error) {
-      // --- CORREÇÃO 2: Lógica de erro atualizada para ser type-safe ---
       let errorMessage = 'Erro ao tentar fazer login. Verifique suas credenciais.';
       
       if (error instanceof AxiosError && error.response) {
-        // Agora acessamos a mensagem de erro da API de forma segura
         errorMessage = error.response.data?.message || errorMessage;
       }
       

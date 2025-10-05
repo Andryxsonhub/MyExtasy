@@ -1,4 +1,3 @@
-import React from 'react';
 import Hero from '@/components/Hero';
 import FeaturesSection from '@/components/FeaturesSection';
 import Footer from '@/components/Footer';

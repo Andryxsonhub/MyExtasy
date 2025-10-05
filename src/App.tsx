@@ -1,12 +1,14 @@
-// src/App.tsx (VERSÃO ATUALIZADA E CORRIGIDA)
+// src/App.tsx (VERSÃO CORRIGIDA)
 
+// --- CORREÇÃO: useEffect foi importado do React ---
+import { useEffect } from 'react'; 
 import { Toaster } from "./components/ui/toaster";
 import { Toaster as Sonner } from "./components/ui/sonner";
 import { TooltipProvider } from "./components/ui/tooltip";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useNavigate, useSearchParams } from "react-router-dom";
-import React, { useEffect } from "react";
+
 import { AuthProvider, useAuth } from "./contexts/AuthProvider";
 import api from './services/api';
 
@@ -27,7 +29,6 @@ import LivePage from './pages/Live';
 import Sobre from './pages/Sobre';
 import RegistrationFlow from "./components/registration/RegistrationFlow";
 
-// ALTERAÇÃO 1: O NOME DA IMPORTAÇÃO FOI CORRIGIDO
 import ExplorePage from "./pages/ExplorePage"; 
 
 const queryClient = new QueryClient();
@@ -81,7 +82,6 @@ const AppRoutes = () => {
       <Route path="/live/:id" element={<ProtectedRoute><LivePage /></ProtectedRoute>} />
       <Route path="/sugestoes" element={<ProtectedRoute><Sugestoes /></ProtectedRoute>} />
       
-      {/* ALTERAÇÃO 2: A ROTA /home AGORA RENDERIZA O COMPONENTE ExplorePage */}
       <Route path="/home" element={<ProtectedRoute><ExplorePage /></ProtectedRoute>} />
       
       <Route path="/profile/:userId" element={<ProtectedRoute><UserProfilePage /></ProtectedRoute>} />
