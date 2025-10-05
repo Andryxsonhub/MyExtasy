@@ -1,4 +1,4 @@
-// src/components/Header.tsx (VERSÃO FINAL COM TODAS AS NAVEGAÇÕES CORRIGIDAS)
+// src/components/Header.tsx (VERSÃO FINAL CORRIGIDA)
 
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
@@ -6,12 +6,12 @@ import { Button } from './ui/button';
 import { useAuth } from '../contexts/AuthProvider';
 import newLogo from '../assets/logo_sem_fundo_limpo.png';
 import api from '../services/api'; 
-import PimentaShopModal from './/PimentaShopModal';
+import PimentaShopModal from './PimentaShopModal';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Menu, X } from 'lucide-react';
 
 const Header: React.FC = () => {
-  const { isLoggedIn, setIsLoggedIn, user, setUser } = useAuth();
+  const { isLoggedIn, user, setUser } = useAuth();
   const navigate = useNavigate();
   const [isShopOpen, setShopOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -25,8 +25,13 @@ const Header: React.FC = () => {
       console.error("Erro no logout do servidor, mas deslogando localmente:", error);
     } finally {
       localStorage.removeItem('authToken');
-      setIsLoggedIn(false);
-      setUser(null);
+      
+      // CORREÇÃO: A chamada 'setIsLoggedIn' foi removida. 
+      // A função 'setUser(null)' é a forma correta de sinalizar ao AuthProvider
+      // que o usuário foi deslogado. O provider é responsável por atualizar
+      // o estado 'isLoggedIn' em consequência disso.
+      setUser(null); 
+      
       navigate('/');
     }
   };
@@ -45,23 +50,14 @@ const Header: React.FC = () => {
             <span className="text-xl font-bold text-white mt-0.5 hidden sm:inline">MyExtasyClub</span>
           </NavLink>
 
-          {/* --- NAVEGAÇÃO PARA USUÁRIOS LOGADOS (DESKTOP) --- */}
           {isLoggedIn && (
             <nav className="hidden md:flex items-center space-x-6">
-              {/* --- MUDANÇA: Links da navegação de desktop RESTAURADOS --- */}
                 <NavLink to="/home" className={({ isActive }) => `text-sm font-medium transition-colors ${isActive ? 'text-primary' : 'text-white hover:text-gray-300'}`}>Home</NavLink>
                 <NavLink to="/meu-perfil" className={({ isActive }) => `text-sm font-medium transition-colors ${isActive ? 'text-primary' : 'text-white hover:text-gray-300'}`}>Meu Perfil</NavLink>
                 <NavLink to="/explorar" className={({ isActive }) => `text-sm font-medium transition-colors ${isActive ? 'text-primary' : 'text-white hover:text-gray-300'}`}>Explorar</NavLink>
                 <NavLink to="/lives" className={({ isActive }) => `text-sm font-medium transition-colors ${isActive ? 'text-primary' : 'text-white hover:text-gray-300'}`}>Lives</NavLink>
                 <NavLink to="/planos" className={({ isActive }) => `text-sm font-medium transition-colors ${isActive ? 'text-primary' : 'text-white hover:text-gray-300'}`}>Planos</NavLink>
                 <NavLink to="/sugestoes" className={({ isActive }) => `text-sm font-medium transition-colors ${isActive ? 'text-primary' : 'text-white hover:text-gray-300'}`}>Sugestoes</NavLink>
-                <NavLink to="/sobre" className={({ isActive }) => `text-sm font-medium transition-colors ${isActive ? 'text-primary' : 'text-white hover:text-gray-300'}`}>Sobre</NavLink>
-            </nav>
-          )}
-          
-          {!isLoggedIn && (
-            <nav className="hidden md:flex items-center space-x-6">
-                <NavLink to="/sobre" className={({ isActive }) => `text-sm font-medium transition-colors ${isActive ? 'text-primary' : 'text-white hover:text-gray-300'}`}>Sobre</NavLink>
             </nav>
           )}
           
@@ -93,33 +89,35 @@ const Header: React.FC = () => {
                 <NavLink to="/cadastrar"><Button>Cadastrar</Button></NavLink>
               </div>
             )}
-            <div className="md:hidden">
-              <Button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} variant="ghost" size="icon">
-                {isMobileMenuOpen ? <X className="h-6 w-6 text-white" /> : <Menu className="h-6 w-6 text-white" />}
-              </Button>
-            </div>
+            {isLoggedIn && (
+              <div className="md:hidden">
+                <Button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} variant="ghost" size="icon">
+                  {isMobileMenuOpen ? <X className="h-6 w-6 text-white" /> : <Menu className="h-6 w-6 text-white" />}
+                </Button>
+              </div>
+            )}
           </div>
         </div>
 
-        {isMobileMenuOpen && (
+        {isMobileMenuOpen && isLoggedIn && (
           <div className="md:hidden bg-background border-t border-border">
-            <nav className="container mx-auto px-4 pt-2 pb-4 flex flex-col space-y-2">
-              {isLoggedIn ? (
-                <>
-                  <NavLink to="/home" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => `block py-2 text-base ${isActive ? 'text-primary' : 'text-white'}`}>Home</NavLink>
-                  <NavLink to="/meu-perfil" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => `block py-2 text-base ${isActive ? 'text-primary' : 'text-white'}`}>Meu Perfil</NavLink>
-                  <NavLink to="/explorar" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => `block py-2 text-base ${isActive ? 'text-primary' : 'text-white'}`}>Explorar</NavLink>
-                  <NavLink to="/lives" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => `block py-2 text-base ${isActive ? 'text-primary' : 'text-white'}`}>Lives</NavLink>
-                  <NavLink to="/planos" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => `block py-2 text-base ${isActive ? 'text-primary' : 'text-white'}`}>Planos</NavLink>
-                  <NavLink to="/sugestoes" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => `block py-2 text-base ${isActive ? 'text-primary' : 'text-white'}`}>Sugestoes</NavLink>
-                  <NavLink to="/sobre" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => `block py-2 text-base ${isActive ? 'text-primary' : 'text-white'}`}>Sobre</NavLink>
-                  <Button onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }} variant="ghost" className="text-white justify-start py-2 h-auto text-base">Sair</Button>
-                </>
-              ) : (
-                <>
-                  <NavLink to="/sobre" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => `block py-2 text-base ${isActive ? 'text-primary' : 'text-white'}`}>Sobre</NavLink>
-                </>
-              )}
+            <nav className="container mx-auto px-4 pt-4 pb-4 flex flex-col space-y-2">
+              <Button 
+                  onClick={() => {
+                      setShopOpen(true);
+                      setIsMobileMenuOpen(false);
+                  }} 
+                  className="w-full justify-center py-2 text-base bg-pink-600 text-white h-auto mb-2"
+              >
+                  Comprar Pimentas 🌶️
+              </Button>
+              <NavLink to="/home" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => `block text-center py-2 text-base ${isActive ? 'text-primary' : 'text-white'}`}>Home</NavLink>
+              <NavLink to="/meu-perfil" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => `block text-center py-2 text-base ${isActive ? 'text-primary' : 'text-white'}`}>Meu Perfil</NavLink>
+              <NavLink to="/explorar" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => `block text-center py-2 text-base ${isActive ? 'text-primary' : 'text-white'}`}>Explorar</NavLink>
+              <NavLink to="/lives" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => `block text-center py-2 text-base ${isActive ? 'text-primary' : 'text-white'}`}>Lives</NavLink>
+              <NavLink to="/planos" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => `block text-center py-2 text-base ${isActive ? 'text-primary' : 'text-white'}`}>Planos</NavLink>
+              <NavLink to="/sugestoes" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => `block text-center py-2 text-base ${isActive ? 'text-primary' : 'text-white'}`}>Sugestoes</NavLink>
+              <Button onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }} variant="ghost" className="text-white justify-center py-2 h-auto text-base mt-2 border-t border-border rounded-none">Sair</Button>
             </nav>
           </div>
         )}

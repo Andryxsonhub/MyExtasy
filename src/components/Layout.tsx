@@ -1,7 +1,9 @@
-// src/components/Layout.tsx
+// src/components/Layout.tsx (VERSÃO FINAL E CORRETA)
+
 import React, { ReactNode } from 'react';
 import Header from './Header';
-import Footer from './Footer';
+// Se você tiver um componente de Footer, descomente a linha abaixo
+// import Footer from './Footer';
 
 interface LayoutProps {
   children: ReactNode;
@@ -9,12 +11,13 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen bg-background">
       <Header />
-      <main className="flex-grow">
+      {/* O padding-top (pt-16) agora mora aqui, para compensar a altura do Header fixo */}
+      <main className="flex-grow pt-16">
         {children}
       </main>
-      <Footer />
+      {/* <Footer /> */}
     </div>
   );
 };
