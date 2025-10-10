@@ -1,4 +1,4 @@
-// src/pages/UserProfilePage.tsx (VERSÃO COMPLETA E FINAL COM VÍDEOS)
+// src/pages/UserProfilePage.tsx
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -14,9 +14,8 @@ import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
 import type { UserData, Post } from '../types/types';
 import UploadPhotoModal from '../components/UploadPhotoModal';
-import UploadVideoModal from '../components/UploadVideoModal'; // 1. IMPORTAMOS O NOVO MODAL
+import UploadVideoModal from '../components/UploadVideoModal';
 
-// Definimos os tipos para uma Foto e um Vídeo
 interface Photo {
   id: number; url: string; description: string | null; createdAt: string;
 }
@@ -29,7 +28,7 @@ const UserProfilePage: React.FC = () => {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [photos, setPhotos] = useState<Photo[]>([]);
-  const [videos, setVideos] = useState<Video[]>([]); // 2. CRIAMOS O ESTADO PARA VÍDEOS
+  const [videos, setVideos] = useState<Video[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('posts');
@@ -42,32 +41,30 @@ const UserProfilePage: React.FC = () => {
   const openUploadPhotoModal = () => setIsUploadPhotoModalOpen(true);
   const closeUploadPhotoModal = () => setIsUploadPhotoModalOpen(false);
   
-  // 3. ADICIONAMOS O CONTROLE PARA O MODAL DE VÍDEO
   const [isUploadVideoModalOpen, setIsUploadVideoModalOpen] = useState(false);
   const openUploadVideoModal = () => setIsUploadVideoModalOpen(true);
   const closeUploadVideoModal = () => setIsUploadVideoModalOpen(false);
 
   const fetchData = async () => {
     const token = localStorage.getItem('authToken');
-    if (!token) {  
-      navigate('/entrar');  
-      return;  
+    if (!token) {   
+      navigate('/entrar');   
+      return;   
     }
     try {
       setError(null);
       
-      // 4. ATUALIZAMOS A BUSCA PARA INCLUIR OS VÍDEOS
       const [profileResponse, postsResponse, photosResponse, videosResponse] = await Promise.all([
         api.get('/users/profile'),
         api.get('/posts'),
         api.get('/users/photos'),
-        api.get('/users/videos') // <-- A NOVA CHAMADA DE API!
+        api.get('/users/videos')
       ]);
       
       setUserData(profileResponse.data);
       setPosts(postsResponse.data);
       setPhotos(photosResponse.data);
-      setVideos(videosResponse.data); // <-- GUARDAMOS OS VÍDEOS NO ESTADO
+      setVideos(videosResponse.data);
 
     } catch (err) {
       setError('Erro ao carregar os dados do perfil.');
@@ -86,6 +83,39 @@ const UserProfilePage: React.FC = () => {
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
+  const AboutTabContent: React.FC<{ user: UserData }> = ({ user }) => {
+    const renderTagList = (title: string, items: string | null | undefined) => {
+      let itemList: string[] = [];
+      try {
+        if (items) itemList = JSON.parse(items);
+      } catch (e) {
+        if (typeof items === 'string') itemList = items.split(',').map(item => item.trim());
+      }
+      if (!itemList || itemList.length === 0) return null;
+      return (
+        <div className="mb-6">
+          <h4 className="text-lg font-semibold text-pink-400 mb-3">{title}</h4>
+          <div className="flex flex-wrap gap-2">
+            {itemList.map((item, index) => (
+              <span key={index} className="bg-zinc-700 text-gray-200 text-sm font-medium px-3 py-1 rounded-full">
+                {item}
+              </span>
+            ))}
+          </div>
+        </div>
+      );
+    };
+    return (
+      <div className="text-white space-y-6">
+        {user.bio && ( <div> <h4 className="text-lg font-semibold text-pink-400 mb-2">Biografia</h4> <p className="text-gray-300 whitespace-pre-wrap">{user.bio}</p> </div> )}
+        {renderTagList("Interesses", user.interests)}
+        {renderTagList("Desejos", user.desires)}
+        {renderTagList("Fetiches", user.fetishes)}
+        {!user.bio && !user.interests && !user.desires && !user.fetishes && ( <div className="text-center text-gray-500 py-10"> <p>Nenhuma informação foi adicionada ainda.</p> <p className="text-sm mt-1">Clique em "Editar Perfil" para começar a preencher.</p> </div> )}
+      </div>
+    );
+  };
+
   return (
     <Layout>
       <div className="container mx-auto px-4 pt-24 pb-12">
@@ -100,11 +130,12 @@ const UserProfilePage: React.FC = () => {
               <div className="bg-card p-6 rounded-lg shadow-lg">
                 <ProfileTabs activeTab={activeTab} onTabChange={setActiveTab} />
                 <div className="mt-6">
-                  {/* Abas de Posts e Sobre (sem mudanças) */}
-                  {activeTab === 'posts' && ( <> <CreatePost userProfilePicture={userData.profilePictureUrl} onPostCreated={fetchData} /> <div className="mt-8"> <PostList posts={posts} /> </div> </> )}
-                  {activeTab === 'about' && ( <div> <p className="text-white">Informações detalhadas do usuário virão aqui.</p> </div> )}
                   
-                  {/* Aba de Fotos (sem mudanças) */}
+                  {activeTab === 'posts' && ( <> <CreatePost userProfilePicture={userData.profilePictureUrl} onPostCreated={fetchData} /> <div className="mt-8"> <PostList posts={posts} /> </div> </> )}
+                  
+                  {activeTab === 'about' && <AboutTabContent user={userData} />}
+                  
+                  {/* --- CÓDIGO DA ABA DE FOTOS RESTAURADO --- */}
                   {activeTab === 'photos' && (
                     <div>
                       <div className="flex justify-between items-center mb-6">
@@ -121,25 +152,25 @@ const UserProfilePage: React.FC = () => {
                     </div>
                   )}
 
-                  {/* 5. ATUALIZAMOS A VISUALIZAÇÃO DA ABA DE VÍDEOS */}
+                  {/* --- CÓDIGO DA ABA DE VÍDEOS RESTAURADO --- */}
                   {activeTab === 'videos' && (
-                     <div>
-                       <div className="flex justify-between items-center mb-6">
-                         <h3 className="text-2xl font-bold text-white">Meus Vídeos</h3>
-                         <Button onClick={openUploadVideoModal}> <PlusCircle className="w-4 h-4 mr-2" /> Adicionar Novo Vídeo </Button>
-                       </div>
-                       {videos.length > 0 ? (
-                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                           {videos.map((video) => (
-                             <div key={video.id} className="relative aspect-video bg-black rounded-lg overflow-hidden">
-                               <video src={`${API_URL}${video.url}`} controls className="w-full h-full object-contain" />
+                       <div>
+                           <div className="flex justify-between items-center mb-6">
+                             <h3 className="text-2xl font-bold text-white">Meus Vídeos</h3>
+                             <Button onClick={openUploadVideoModal}> <PlusCircle className="w-4 h-4 mr-2" /> Adicionar Novo Vídeo </Button>
+                           </div>
+                           {videos.length > 0 ? (
+                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                               {videos.map((video) => (
+                                 <div key={video.id} className="relative aspect-video bg-black rounded-lg overflow-hidden">
+                                   <video src={`${API_URL}${video.url}`} controls className="w-full h-full object-contain" />
+                                 </div>
+                               ))}
                              </div>
-                           ))}
-                         </div>
-                       ) : (
-                         <div className="text-center text-gray-500 py-16 border-2 border-dashed border-gray-700 rounded-lg"> <p>Nenhum vídeo publicado ainda.</p> <p className="text-sm mt-1">Que tal adicionar o primeiro?</p> </div>
-                       )}
-                     </div>
+                           ) : (
+                             <div className="text-center text-gray-500 py-16 border-2 border-dashed border-gray-700 rounded-lg"> <p>Nenhum vídeo publicado ainda.</p> <p className="text-sm mt-1">Que tal adicionar o primeiro?</p> </div>
+                           )}
+                       </div>
                   )}
                 </div>
               </div>
@@ -149,11 +180,9 @@ const UserProfilePage: React.FC = () => {
         )}
       </div>
       
-      {/* Modais existentes (sem mudanças) */}
+      {/* Modais existentes */}
       <EditProfileModal isOpen={isEditModalOpen} onClose={closeEditModal} currentUser={userData} onUpdateSuccess={handleUpdateSuccess} />
       <UploadPhotoModal isOpen={isUploadPhotoModalOpen} onClose={closeUploadPhotoModal} onUploadSuccess={fetchData} />
-      
-      {/* 6. ADICIONAMOS O NOVO MODAL DE VÍDEO À PÁGINA */}
       <UploadVideoModal isOpen={isUploadVideoModalOpen} onClose={closeUploadVideoModal} onUploadSuccess={fetchData} />
     </Layout>
   );

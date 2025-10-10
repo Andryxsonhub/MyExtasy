@@ -1,8 +1,8 @@
-// src/pages/Live.tsx (VERSÃO FINALÍSSIMA E LIMPA)
+// src/pages/Live.tsx (VERSÃO FINAL COM ROTA DINÂMICA)
 
 import React, { useState, useEffect, FormEvent } from 'react';
-// ALTERAÇÃO: 'useParams' foi removido da linha abaixo, pois não era usado.
-import { useNavigate } from 'react-router-dom';
+// 1. useParams foi importado para ler a URL
+import { useParams, useNavigate } from 'react-router-dom';
 import api from '@/services/api';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/contexts/AuthProvider';
@@ -14,12 +14,14 @@ import { io, Socket } from 'socket.io-client';
 import type { UserData } from '@/types/types';
 
 interface ChatMessage {
-  id: string;
-  text: string;
-  user: Pick<UserData, 'id' | 'name'>;
+    id: string;
+    text: string;
+    user: Pick<UserData, 'id' | 'name'>;
 }
 
 const LivePage: React.FC = () => {
+    // 2. Lê o parâmetro "roomName" da URL (ex: "live-123")
+    const { roomName } = useParams<{ roomName: string }>(); 
     const navigate = useNavigate();
     const { user } = useAuth();
     
@@ -32,21 +34,26 @@ const LivePage: React.FC = () => {
     
     useEffect(() => {
         const fetchToken = async () => {
-            if (user) {
+            // Garante que temos um usuário e um nome de sala antes de continuar
+            if (user && roomName) {
                 try {
-                    const response = await api.get('/live/token');
+                    // 3. Pede ao backend um token para a sala específica do "roomName"
+                    const response = await api.get(`/live/token/${roomName}`);
+                    
                     setToken(response.data.token);
                     setWsUrl(response.data.wsUrl);
                 } catch (error) {
                     console.error('Erro ao buscar token do LiveKit:', error);
-                    alert('Não foi possível conectar à live. Redirecionando...');
-                    navigate('/lives');
+                    alert('Não foi possível conectar à live. Verifique se a live ainda está ativa.');
+                    navigate('/explorar'); // Redireciona de volta para a lista de lives
                 }
             }
         };
         fetchToken();
-    }, [user, navigate]);
+    // 4. O useEffect agora depende do 'roomName' para rodar novamente se a URL mudar
+    }, [user, navigate, roomName]);
 
+    // O resto do seu código (lógica do chat) permanece exatamente o mesmo
     useEffect(() => {
         if (user) {
             const newSocket = io(import.meta.env.VITE_API_URL || 'http://localhost:3333');

@@ -1,4 +1,4 @@
-// src/types/types.ts (VERSÃO CORRETA E CENTRALIZADA)
+// src/types/types.ts
 
 import { ReactNode } from 'react';
 
@@ -35,4 +35,10 @@ export interface UserData {
   createdAt: string;
   lastSeenAt: string | null;
   pimentaBalance?: number;
+  
+  // --- CAMPOS ADICIONADOS PARA COMPLETAR O PERFIL ---
+  username: string | null;
+  interests: string | null;
+  desires: string | null;
+  fetishes: string | null;
 }

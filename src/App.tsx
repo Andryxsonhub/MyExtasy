@@ -1,6 +1,5 @@
-// src/App.tsx (VERSÃO CORRIGIDA)
+// src/App.tsx (VERSÃO FINAL COM ROTA CORRIGIDA)
 
-// --- CORREÇÃO: useEffect foi importado do React ---
 import { useEffect } from 'react'; 
 import { Toaster } from "./components/ui/toaster";
 import { Toaster as Sonner } from "./components/ui/sonner";
@@ -34,81 +33,85 @@ import ExplorePage from "./pages/ExplorePage";
 const queryClient = new QueryClient();
 
 const GithubCallbackHandler = () => {
-  const { setIsLoggedIn } = useAuth();
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+    const { setIsLoggedIn } = useAuth();
+    const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
 
-  useEffect(() => {
-    const authenticateWithCode = async (code: string) => {
-      try {
-        const response = await api.post('/auth/github/callback', { code });
-        const { token } = response.data;
-        if (token) {
-          localStorage.setItem('authToken', token);
-          setIsLoggedIn(true);
-          navigate('/home'); // Redireciona para /home após login
-        } else {
-          throw new Error("Token não recebido do servidor.");
-        }
-      } catch (error) {
-        console.error("Erro durante a autenticação com GitHub:", error);
-        navigate('/entrar', { state: { error: 'Falha na autenticação com o GitHub.' } });
-      }
-    };
-    const code = searchParams.get('code');
-    if (code) { authenticateWithCode(code); }  
-    else { navigate('/entrar', { state: { error: 'Código de autorização do GitHub não encontrado.' } }); }
-  }, [navigate, searchParams, setIsLoggedIn]);
+    useEffect(() => {
+        const authenticateWithCode = async (code: string) => {
+            try {
+                const response = await api.post('/auth/github/callback', { code });
+                const { token } = response.data;
+                if (token) {
+                    localStorage.setItem('authToken', token);
+                    setIsLoggedIn(true);
+                    navigate('/home'); // Redireciona para /home após login
+                } else {
+                    throw new Error("Token não recebido do servidor.");
+                }
+            } catch (error) {
+                console.error("Erro durante a autenticação com GitHub:", error);
+                navigate('/entrar', { state: { error: 'Falha na autenticação com o GitHub.' } });
+            }
+        };
+        const code = searchParams.get('code');
+        if (code) { authenticateWithCode(code); }  
+        else { navigate('/entrar', { state: { error: 'Código de autorização do GitHub não encontrado.' } }); }
+    }, [navigate, searchParams, setIsLoggedIn]);
 
-  return <div className="flex justify-center items-center h-screen bg-background"><p className="text-white text-xl animate-pulse">Autenticando...</p></div>;
+    return <div className="flex justify-center items-center h-screen bg-background"><p className="text-white text-xl animate-pulse">Autenticando...</p></div>;
 };
 
 const AppRoutes = () => {
-  return (
-    <Routes>
-      <Route path="/auth/github/callback" element={<GithubCallbackHandler />} />
+    return (
+        <Routes>
+            <Route path="/auth/github/callback" element={<GithubCallbackHandler />} />
 
-      {/* --- Rotas Públicas --- */}
-      <Route path="/" element={<Index />} />
-      <Route path="/loja" element={<Loja />} />
-      <Route path="/planos" element={<Planos />} />
-      <Route path="/entrar" element={<Entrar />} />
-      <Route path="/sobre" element={<Sobre />} />
-      <Route path="/cadastrar" element={<RegistrationFlow />} />
+            {/* --- Rotas Públicas --- */}
+            <Route path="/" element={<Index />} />
+            <Route path="/loja" element={<Loja />} />
+            <Route path="/planos" element={<Planos />} />
+            <Route path="/entrar" element={<Entrar />} />
+            <Route path="/sobre" element={<Sobre />} />
+            <Route path="/cadastrar" element={<RegistrationFlow />} />
 
-      {/* --- Rotas Protegidas --- */}
-      <Route path="/explorar" element={<ProtectedRoute><Explorar /></ProtectedRoute>} />
-      <Route path="/lives" element={<ProtectedRoute><Lives /></ProtectedRoute>} />
-      <Route path="/live/:id" element={<ProtectedRoute><LivePage /></ProtectedRoute>} />
-      <Route path="/sugestoes" element={<ProtectedRoute><Sugestoes /></ProtectedRoute>} />
-      
-      <Route path="/home" element={<ProtectedRoute><ExplorePage /></ProtectedRoute>} />
-      
-      <Route path="/profile/:userId" element={<ProtectedRoute><UserProfilePage /></ProtectedRoute>} />
-      <Route path="/meu-perfil" element={<ProtectedRoute><UserProfilePage /></ProtectedRoute>} />
-      
-      <Route path="*" element={<NotFound />} />
-    </Routes>
-  );
+            {/* --- Rotas Protegidas --- */}
+            <Route path="/explorar" element={<ProtectedRoute><Explorar /></ProtectedRoute>} />
+            <Route path="/lives" element={<ProtectedRoute><Lives /></ProtectedRoute>} />
+            
+            {/* --- ALTERAÇÃO PRINCIPAL AQUI --- */}
+            {/* O parâmetro foi renomeado de ":id" para ":roomName" */}
+            <Route path="/live/:roomName" element={<ProtectedRoute><LivePage /></ProtectedRoute>} />
+            
+            <Route path="/sugestoes" element={<ProtectedRoute><Sugestoes /></ProtectedRoute>} />
+            
+            <Route path="/home" element={<ProtectedRoute><ExplorePage /></ProtectedRoute>} />
+            
+            <Route path="/profile/:userId" element={<ProtectedRoute><UserProfilePage /></ProtectedRoute>} />
+            <Route path="/meu-perfil" element={<ProtectedRoute><UserProfilePage /></ProtectedRoute>} />
+            
+            <Route path="*" element={<NotFound />} />
+        </Routes>
+    );
 };
 
 const App = () => {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner position="top-center" />
-        <BrowserRouter>
-          <AuthProvider>
-            <Header />
-            <main className="pt-16">
-              <AppRoutes />
-            </main>
-          </AuthProvider>
-        </BrowserRouter>
-      </TooltipProvider>
-    </QueryClientProvider>
-  );
+    return (
+        <QueryClientProvider client={queryClient}>
+            <TooltipProvider>
+                <Toaster />
+                <Sonner position="top-center" />
+                <BrowserRouter>
+                    <AuthProvider>
+                        <Header />
+                        <main className="pt-16">
+                            <AppRoutes />
+                        </main>
+                    </AuthProvider>
+                </BrowserRouter>
+            </TooltipProvider>
+        </QueryClientProvider>
+    );
 };
 
 export default App;
