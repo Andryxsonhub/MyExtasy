@@ -1,13 +1,13 @@
-// src/types/types.ts (VERSÃO COMPLETA E CORRIGIDA)
+// src/types/types.ts
 
 import { ReactNode } from 'react';
 
-// Tipo para as props de rotas protegidas e provedores
+// Para provedores e rotas protegidas
 export interface ChildrenProps {
   children: ReactNode;
 }
 
-// Tipo para o nosso Contexto de Autenticação
+// Para o Contexto de Autenticação
 export interface AuthContextType {
   isLoggedIn: boolean;
   setIsLoggedIn: (isLoggedIn: boolean) => void;
@@ -16,28 +16,56 @@ export interface AuthContextType {
   setUser: (user: UserData | null) => void;
 }
 
-// Interface para um único Post
-export interface Post {
-  id: number;
-  content: string;
-  createdAt: string;
+// Para as estatísticas do Sidebar
+export interface MonthlyStats {
+  visits: number;
+  commentsReceived: number;
+  commentsMade: number;
 }
 
-// Interface para os dados do Usuário (agora realmente completa)
+// O tipo principal para os dados do usuário
 export interface UserData {
   id: number;
   name: string;
   email: string;
+  username: string | null;
+  bio: string | null;
   profilePictureUrl: string | null;
+  coverPhotoUrl: string | null;
   location: string | null;
   gender: string | null;
   createdAt: string;
   lastSeenAt: string | null;
   pimentaBalance?: number;
-  
-  // --- CAMPOS ADICIONADOS PARA A ABA "SOBRE" ---
-  bio: string | null;
   interests: string | null;
   desires: string | null;
   fetishes: string | null;
+  certificationLevel?: number;
+  monthlyStats?: MonthlyStats;
+}
+
+// Para a lista de posts
+export interface Post {
+  id: number;
+  content: string;
+  createdAt: string;
+  author: {
+    name: string;
+    profilePictureUrl?: string | null;
+  };
+}
+
+// Para a galeria de mídia
+export interface Photo {
+  id: number;
+  url: string;
+  description: string | null;
+  createdAt: string;
+}
+
+export interface Video {
+  id: number;
+  url: string;
+  description: string | null;
+  createdAt: string;
 }

@@ -1,28 +1,37 @@
-// src/components/ProfileSidebar.tsx
+// src/components/ProfileSidebar.tsx (VERSÃO ATUALIZADA)
 
 import React from 'react';
-import { ChevronRight } from 'lucide-react'; // Ícone de seta
+import { ChevronRight } from 'lucide-react';
+import type { UserData } from '../types/types';
 
-const ProfileSidebar: React.FC = () => {
+interface ProfileSidebarProps {
+  user: UserData;
+  onViewCertificationClick: () => void; // NOVO: Prop para a função de clique
+}
+
+const ProfileSidebar: React.FC<ProfileSidebarProps> = ({ user, onViewCertificationClick }) => {
+  // Usamos a porcentagem REAL vinda da API
+  console.log('[SIDEBAR] Prop user recebida:', user);
+  const certificationLevel = user.certificationLevel ?? 0;
+  const stats = user.monthlyStats ?? { visits: 0, commentsReceived: 0, commentsMade: 0 };
+
   return (
     <div className="flex flex-col gap-8">
-      {/* Widget de Nível de Certificação */}
       <div className="bg-card p-6 rounded-lg shadow-lg">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-bold text-white">Nível de certificação</h3>
-          <span className="text-sm font-bold text-primary">0% completo</span>
+          <span className="text-sm font-bold text-primary">{certificationLevel}% completo</span>
         </div>
-        {/* Barra de Progresso Simples */}
         <div className="w-full bg-gray-700 rounded-full h-2.5">
-          <div className="bg-primary h-2.5 rounded-full" style={{ width: '0%' }}></div>
+          <div className="bg-primary h-2.5 rounded-full" style={{ width: `${certificationLevel}%` }}></div>
         </div>
-        <button className="text-primary text-sm font-semibold mt-4 flex items-center w-full justify-end hover:underline">
+        {/* O botão agora chama a função recebida via prop */}
+        <button onClick={onViewCertificationClick} className="text-primary text-sm font-semibold mt-4 flex items-center w-full justify-end hover:underline">
           <span>Ver tudo</span>
           <ChevronRight className="w-4 h-4 ml-1" />
         </button>
       </div>
 
-      {/* Widget de Estatísticas */}
       <div className="bg-card p-6 rounded-lg shadow-lg">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-bold text-white">Estatísticas do mês</h3>
@@ -31,15 +40,15 @@ const ProfileSidebar: React.FC = () => {
         <ul className="space-y-3">
           <li className="flex justify-between items-center text-sm">
             <span className="text-gray-400">Visitas recebidas</span>
-            <span className="text-white font-semibold">0</span>
+            <span className="text-white font-semibold">{stats.visits}</span>
           </li>
           <li className="flex justify-between items-center text-sm">
             <span className="text-gray-400">Comentários recebidos</span>
-            <span className="text-white font-semibold">0</span>
+            <span className="text-white font-semibold">{stats.commentsReceived}</span>
           </li>
           <li className="flex justify-between items-center text-sm">
             <span className="text-gray-400">Comentários feitos</span>
-            <span className="text-white font-semibold">0</span>
+            <span className="text-white font-semibold">{stats.commentsMade}</span>
           </li>
         </ul>
       </div>

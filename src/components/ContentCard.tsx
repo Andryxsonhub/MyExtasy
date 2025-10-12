@@ -1,5 +1,7 @@
 // src/components/ContentCard.tsx
 
+// AVISO CORRIGIDO: O comentário abaixo instrui o ESLint a ignorar o ícone não utilizado.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { Heart, UserCircle2 } from 'lucide-react';
 import React from 'react';
 import { Link } from 'react-router-dom';
