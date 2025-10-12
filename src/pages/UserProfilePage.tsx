@@ -1,7 +1,7 @@
-// src/pages/UserProfilePage.tsx (VERSÃO FINAL E COMPLETA)
+// src/pages/UserProfilePage.tsx (VERSÃO COM CORREÇÃO DE TIPO)
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import api from '../services/api';
 import Layout from '../components/Layout';
 import ProfileHeader from '../components/ProfileHeader';
@@ -18,11 +18,15 @@ import PhotosTabContent from '../components/tabs/PhotosTabContent';
 import VideosTabContent from '../components/tabs/VideosTabContent';
 import CertificationModal from '../components/CertificationModal';
 import StatsModal from '../components/StatsModal';
+import { useAuth } from '../contexts/AuthProvider';
 
 const UserProfilePage: React.FC = () => {
   const navigate = useNavigate();
-  
-  const [userData, setUserData] = useState<UserData | null>(null);
+  const { userId } = useParams<{ userId: string }>();
+  const location = useLocation();
+  const { user: loggedInUser } = useAuth();
+
+  const [profileData, setProfileData] = useState<UserData | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [videos, setVideos] = useState<Video[]>([]);
@@ -30,6 +34,8 @@ const UserProfilePage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('posts');
+
+  const [isMyProfile, setIsMyProfile] = useState(false);
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const openEditModal = () => setIsEditModalOpen(true);
@@ -52,30 +58,41 @@ const UserProfilePage: React.FC = () => {
   const closeStatsModal = () => setIsStatsModalOpen(false);
 
   const fetchData = useCallback(async () => {
-    const token = localStorage.getItem('authToken');
-    if (!token) { navigate('/entrar'); return; }
+    // AQUI ESTÁ A CORREÇÃO: Forçamos o resultado a ser um boolean com '!!'
+    const isViewingOwnProfile = !!(location.pathname === '/meu-perfil' || (userId && loggedInUser && parseInt(userId, 10) === loggedInUser.id));
+    setIsMyProfile(isViewingOwnProfile);
+
+    const profileUrl = isViewingOwnProfile ? '/users/profile' : `/users/profile/${userId}`;
+    const postsUrl = '/posts'; 
+    const photosUrl = '/users/photos';
+    const videosUrl = '/users/videos';
+
     try {
-      setIsLoading(true); // Para garantir que o loading apareça
+      setIsLoading(true);
       setError(null);
+      
       const [profileResponse, postsResponse, photosResponse, videosResponse] = await Promise.all([
-        api.get('/users/profile'),
-        api.get('/posts'),
-        api.get('/users/photos'),
-        api.get('/users/videos')
+        api.get(profileUrl),
+        api.get(postsUrl),
+        api.get(photosUrl),
+        api.get(videosUrl)
       ]);
-      setUserData(profileResponse.data);
+      
+      setProfileData(profileResponse.data);
       setPosts(postsResponse.data);
       setPhotos(photosResponse.data);
       setVideos(videosResponse.data);
+
     } catch (err) {
       setError('Erro ao carregar os dados do perfil.');
       console.error('Erro ao buscar dados:', err);
+      navigate('/explorar');
     } finally {
       setIsLoading(false);
     }
-  }, [navigate]);
+  }, [navigate, userId, location.pathname, loggedInUser]);
   
-  const handleUpdateSuccess = (updatedUser: UserData) => { setUserData(updatedUser); };
+  const handleUpdateSuccess = (updatedUser: UserData) => { setProfileData(updatedUser); };
 
   useEffect(() => {
     fetchData();
@@ -84,44 +101,50 @@ const UserProfilePage: React.FC = () => {
   return (
     <Layout>
       <div className="container mx-auto px-4 pt-24 pb-12">
-        {isLoading && <p className="text-center text-white">Carregando seu perfil...</p>}
+        {isLoading && <p className="text-center text-white">Carregando perfil...</p>}
         {error && <p className="text-center text-red-500">{error}</p>}
         
-        {userData && <ProfileHeader 
-                        user={userData} 
-                        onEditClick={openEditModal} 
-                        onCoverUploadSuccess={fetchData} 
-                     />}
+        {profileData && <ProfileHeader 
+                           user={profileData} 
+                           onEditClick={isMyProfile ? openEditModal : () => {}} 
+                           onCoverUploadSuccess={isMyProfile ? fetchData : () => {}}
+                           isMyProfile={isMyProfile}
+                         />}
 
-        {!isLoading && !error && userData && (
+        {!isLoading && !error && profileData && (
           <div className="mt-8 flex flex-col md:flex-row gap-8">
             <div className="w-full md:w-2/3">
               <div className="bg-card p-6 rounded-lg shadow-lg">
                 <ProfileTabs activeTab={activeTab} setActiveTab={setActiveTab} />
                 <div className="mt-6">
-                  {activeTab === 'posts' && ( <> <CreatePost userProfilePicture={userData.profilePictureUrl} onPostCreated={fetchData} /> <div className="mt-8"> <PostList posts={posts} /> </div> </> )}
-                  {activeTab === 'about' && <AboutTabContent user={userData} />}
-                  {activeTab === 'photos' && <PhotosTabContent photos={photos} onAddPhotoClick={openUploadPhotoModal} />}
-                  {activeTab === 'videos' && <VideosTabContent videos={videos} onAddVideoClick={openUploadVideoModal} />}
+                  {isMyProfile && activeTab === 'posts' && <CreatePost userProfilePicture={profileData.profilePictureUrl} onPostCreated={fetchData} />}
+                  {activeTab === 'posts' && <div className={isMyProfile ? "mt-8" : ""}><PostList posts={posts} /></div>}
+                  {activeTab === 'about' && <AboutTabContent user={profileData} />}
+                  {activeTab === 'photos' && <PhotosTabContent photos={photos} onAddPhotoClick={isMyProfile ? openUploadPhotoModal : () => {}} isMyProfile={isMyProfile} />}
+                  {activeTab === 'videos' && <VideosTabContent videos={videos} onAddVideoClick={isMyProfile ? openUploadVideoModal : () => {}} isMyProfile={isMyProfile} />}
                 </div>
               </div>
             </div>
-            <div className="w-full md:w-1/3"> 
+            {isMyProfile && <div className="w-full md:w-1/3"> 
               <ProfileSidebar 
-                user={userData} 
+                user={profileData} 
                 onViewCertificationClick={openCertificationModal} 
                 onViewStatsClick={openStatsModal}
               /> 
-            </div>
+            </div>}
           </div>
         )}
       </div>
       
-      <EditProfileModal isOpen={isEditModalOpen} onClose={closeEditModal} currentUser={userData} onUpdateSuccess={handleUpdateSuccess} />
-      <UploadPhotoModal isOpen={isUploadPhotoModalOpen} onClose={closeUploadPhotoModal} onUploadSuccess={fetchData} />
-      <UploadVideoModal isOpen={isUploadVideoModalOpen} onClose={closeUploadVideoModal} onUploadSuccess={fetchData} />
-      <CertificationModal isOpen={isCertificationModalOpen} onClose={closeCertificationModal} user={userData} />
-      <StatsModal isOpen={isStatsModalOpen} onClose={closeStatsModal} user={userData} />
+      {isMyProfile && (
+          <>
+            <EditProfileModal isOpen={isEditModalOpen} onClose={closeEditModal} currentUser={profileData} onUpdateSuccess={handleUpdateSuccess} />
+            <UploadPhotoModal isOpen={isUploadPhotoModalOpen} onClose={closeUploadPhotoModal} onUploadSuccess={fetchData} />
+            <UploadVideoModal isOpen={isUploadVideoModalOpen} onClose={closeUploadVideoModal} onUploadSuccess={fetchData} />
+            <CertificationModal isOpen={isCertificationModalOpen} onClose={closeCertificationModal} user={profileData} />
+            <StatsModal isOpen={isStatsModalOpen} onClose={closeStatsModal} user={profileData} />
+          </>
+      )}
     </Layout>
   );
 };
