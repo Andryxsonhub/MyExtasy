@@ -1,4 +1,4 @@
-// src/pages/UserProfilePage.tsx (VERSÃO COM CORREÇÃO DE TIPO)
+// src/pages/UserProfilePage.tsx (VERSÃO 100% COMPLETA COM REGISTRO DE VISITA)
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
@@ -34,7 +34,6 @@ const UserProfilePage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('posts');
-
   const [isMyProfile, setIsMyProfile] = useState(false);
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -58,7 +57,6 @@ const UserProfilePage: React.FC = () => {
   const closeStatsModal = () => setIsStatsModalOpen(false);
 
   const fetchData = useCallback(async () => {
-    // AQUI ESTÁ A CORREÇÃO: Forçamos o resultado a ser um boolean com '!!'
     const isViewingOwnProfile = !!(location.pathname === '/meu-perfil' || (userId && loggedInUser && parseInt(userId, 10) === loggedInUser.id));
     setIsMyProfile(isViewingOwnProfile);
 
@@ -97,6 +95,25 @@ const UserProfilePage: React.FC = () => {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // NOVO useEffect PARA REGISTRAR A VISITA
+  useEffect(() => {
+    const registerView = async () => {
+      // Condição: Se o perfil existe, não é o meu perfil, e o ID é válido...
+      if (profileData && !isMyProfile && userId) {
+        try {
+          // ...faz uma chamada silenciosa para o backend para registrar a visita.
+          await api.post(`/users/profile/${userId}/view`);
+          console.log(`Visita registrada no perfil de ${profileData.name}`);
+        } catch (error) {
+          console.error("Não foi possível registrar a visita:", error);
+        }
+      }
+    };
+    // Chama a função de registro depois que os dados do perfil são carregados
+    registerView();
+  }, [profileData, isMyProfile, userId]);
+
 
   return (
     <Layout>
