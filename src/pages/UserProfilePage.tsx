@@ -1,4 +1,4 @@
-// src/pages/UserProfilePage.tsx (VERSÃO ATUALIZADA)
+// src/pages/UserProfilePage.tsx (VERSÃO FINAL E COMPLETA)
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -17,7 +17,7 @@ import AboutTabContent from '../components/tabs/AboutTabContent';
 import PhotosTabContent from '../components/tabs/PhotosTabContent';
 import VideosTabContent from '../components/tabs/VideosTabContent';
 import CertificationModal from '../components/CertificationModal';
-import StatsModal from '../components/StatsModal'; // NOVO: Importa o modal de estatísticas
+import StatsModal from '../components/StatsModal';
 
 const UserProfilePage: React.FC = () => {
   const navigate = useNavigate();
@@ -47,7 +47,6 @@ const UserProfilePage: React.FC = () => {
   const openCertificationModal = () => setIsCertificationModalOpen(true);
   const closeCertificationModal = () => setIsCertificationModalOpen(false);
 
-  // NOVO: Estado e funções para o modal de estatísticas
   const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
   const openStatsModal = () => setIsStatsModalOpen(true);
   const closeStatsModal = () => setIsStatsModalOpen(false);
@@ -56,6 +55,7 @@ const UserProfilePage: React.FC = () => {
     const token = localStorage.getItem('authToken');
     if (!token) { navigate('/entrar'); return; }
     try {
+      setIsLoading(true); // Para garantir que o loading apareça
       setError(null);
       const [profileResponse, postsResponse, photosResponse, videosResponse] = await Promise.all([
         api.get('/users/profile'),
@@ -70,14 +70,15 @@ const UserProfilePage: React.FC = () => {
     } catch (err) {
       setError('Erro ao carregar os dados do perfil.');
       console.error('Erro ao buscar dados:', err);
+    } finally {
+      setIsLoading(false);
     }
   }, [navigate]);
   
   const handleUpdateSuccess = (updatedUser: UserData) => { setUserData(updatedUser); };
 
   useEffect(() => {
-    setIsLoading(true);
-    fetchData().finally(() => setIsLoading(false));
+    fetchData();
   }, [fetchData]);
 
   return (
@@ -86,7 +87,11 @@ const UserProfilePage: React.FC = () => {
         {isLoading && <p className="text-center text-white">Carregando seu perfil...</p>}
         {error && <p className="text-center text-red-500">{error}</p>}
         
-        {userData && <ProfileHeader user={userData} onEditClick={openEditModal} />}
+        {userData && <ProfileHeader 
+                        user={userData} 
+                        onEditClick={openEditModal} 
+                        onCoverUploadSuccess={fetchData} 
+                     />}
 
         {!isLoading && !error && userData && (
           <div className="mt-8 flex flex-col md:flex-row gap-8">
@@ -101,7 +106,6 @@ const UserProfilePage: React.FC = () => {
                 </div>
               </div>
             </div>
-            {/* NOVO: Passamos a nova função openStatsModal para o sidebar */}
             <div className="w-full md:w-1/3"> 
               <ProfileSidebar 
                 user={userData} 
@@ -113,13 +117,10 @@ const UserProfilePage: React.FC = () => {
         )}
       </div>
       
-      {/* Modais existentes */}
       <EditProfileModal isOpen={isEditModalOpen} onClose={closeEditModal} currentUser={userData} onUpdateSuccess={handleUpdateSuccess} />
       <UploadPhotoModal isOpen={isUploadPhotoModalOpen} onClose={closeUploadPhotoModal} onUploadSuccess={fetchData} />
       <UploadVideoModal isOpen={isUploadVideoModalOpen} onClose={closeUploadVideoModal} onUploadSuccess={fetchData} />
       <CertificationModal isOpen={isCertificationModalOpen} onClose={closeCertificationModal} user={userData} />
-
-      {/* NOVO: Renderizamos o nosso novo modal de estatísticas */}
       <StatsModal isOpen={isStatsModalOpen} onClose={closeStatsModal} user={userData} />
     </Layout>
   );
