@@ -1,6 +1,5 @@
-// src/App.tsx (VERSÃO CORRIGIDA)
+// src/App.tsx (VERSÃO 100% COMPLETA E CORRIGIDA)
 
-// --- CORREÇÃO: useEffect foi importado do React ---
 import { useEffect } from 'react'; 
 import { Toaster } from "./components/ui/toaster";
 import { Toaster as Sonner } from "./components/ui/sonner";
@@ -46,7 +45,7 @@ const GithubCallbackHandler = () => {
         if (token) {
           localStorage.setItem('authToken', token);
           setIsLoggedIn(true);
-          navigate('/home'); // Redireciona para /home após login
+          navigate('/home');
         } else {
           throw new Error("Token não recebido do servidor.");
         }
@@ -79,7 +78,12 @@ const AppRoutes = () => {
       {/* --- Rotas Protegidas --- */}
       <Route path="/explorar" element={<ProtectedRoute><Explorar /></ProtectedRoute>} />
       <Route path="/lives" element={<ProtectedRoute><Lives /></ProtectedRoute>} />
-      <Route path="/live/:id" element={<ProtectedRoute><LivePage /></ProtectedRoute>} />
+      
+      {/* ========================================================== */}
+      {/* AQUI ESTÁ A CORREÇÃO PRINCIPAL DE TODO O PROBLEMA */}
+      {/* ========================================================== */}
+      <Route path="/live/:roomName" element={<ProtectedRoute><LivePage /></ProtectedRoute>} />
+
       <Route path="/sugestoes" element={<ProtectedRoute><Sugestoes /></ProtectedRoute>} />
       
       <Route path="/home" element={<ProtectedRoute><ExplorePage /></ProtectedRoute>} />

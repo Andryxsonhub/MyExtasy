@@ -1,38 +1,44 @@
+// src/components/LiveControls.tsx (VERSÃO 100% COMPLETA E LIMPA)
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '@/services/api'; // Seu serviço de API
+import api from '@/services/api';
 import { Video } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthProvider';
 
 const LiveControls = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const navigate = useNavigate();
+    const { user } = useAuth();
 
     const handleStartLive = async () => {
         setIsLoading(true);
         setError(null);
 
+        if (!user || !user.id) {
+            setError("Dados do usuário não encontrados. Por favor, faça login novamente.");
+            setIsLoading(false);
+            return;
+        }
+
         try {
-            // Passo 1: Avisa o backend para criar o registro da live
             await api.post('/live/start');
             
-            // Passo 2: Se o passo 1 deu certo, navega para a página da live
-            // A página '/live/me' vai então buscar o token e conectar ao LiveKit
-            navigate('/live/me');
+            const roomName = `live-${user.id}`;
+            
+            navigate(`/live/${roomName}`);
 
-        } catch (err) { // CORREÇÃO: 'err' agora é tratado como 'unknown' por padrão
+        } catch (err) {
             console.error("Erro ao iniciar a live:", err);
-
-            // Verificação de tipo para tratar o erro de forma segura
             if (err && typeof err === 'object' && 'response' in err) {
                 const axiosError = err as { response?: { status?: number } };
                 if (axiosError.response?.status === 409) {
-                    setError('Você já tem uma live ativa. Finalize a anterior ou apague-a no banco de dados para testes.');
+                    setError('Você já tem uma live ativa.');
                 } else {
-                    setError('Não foi possível iniciar a live. Verifique o console do backend.');
+                    setError('Não foi possível iniciar a live.');
                 }
             } else {
-                // Fallback para erros que não vêm da API
                 setError('Ocorreu um erro inesperado.');
             }
             setIsLoading(false);
@@ -63,4 +69,3 @@ const LiveControls = () => {
 };
 
 export default LiveControls;
-

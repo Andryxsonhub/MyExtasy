@@ -1,15 +1,19 @@
-// src/pages/Live.tsx (VERSÃO FINALÍSSIMA E LIMPA)
+// src/pages/Live.tsx (VERSÃO 100% COMPLETA COM CONTROLES E LÓGICA DE 'STOP')
 
 import React, { useState, useEffect, FormEvent } from 'react';
-// ALTERAÇÃO: 'useParams' foi removido da linha abaixo, pois não era usado.
-import { useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import api from '@/services/api';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/contexts/AuthProvider';
-
-import { LiveKitRoom, VideoConference } from '@livekit/components-react';
+import { 
+    LiveKitRoom, 
+    VideoTrack, 
+    useTracks,
+    ControlBar,
+    useLocalParticipant
+} from '@livekit/components-react';
 import '@livekit/components-styles';
-
+import { Track } from 'livekit-client';
 import { io, Socket } from 'socket.io-client';
 import type { UserData } from '@/types/types';
 
@@ -19,22 +23,44 @@ interface ChatMessage {
   user: Pick<UserData, 'id' | 'name'>;
 }
 
+const LiveLayout = () => {
+    const tracks = useTracks([Track.Source.Camera]);
+    const { localParticipant } = useLocalParticipant();
+
+    const hostTrackRef = tracks.find(trackRef => trackRef.participant.permissions?.canPublish === true);
+    const isHost = localParticipant.permissions?.canPublish === true;
+
+    return (
+        <div className="flex-grow flex flex-col bg-black relative">
+            {hostTrackRef ? (
+                <VideoTrack trackRef={hostTrackRef} style={{ width: '100%', height: '100%' }} />
+            ) : (
+                <div className="flex justify-center items-center h-full text-white">
+                    Aguardando o início da transmissão...
+                </div>
+            )}
+            
+            {isHost && <ControlBar />}
+        </div>
+    );
+};
+
 const LivePage: React.FC = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
+    const { roomName } = useParams<{ roomName: string }>();
     
     const [token, setToken] = useState<string | null>(null);
     const [wsUrl, setWsUrl] = useState<string | null>(null);
-
     const [socket, setSocket] = useState<Socket | null>(null);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [inputValue, setInputValue] = useState('');
     
     useEffect(() => {
         const fetchToken = async () => {
-            if (user) {
+            if (user && roomName) {
                 try {
-                    const response = await api.get('/live/token');
+                    const response = await api.get(`/live/token/${roomName}`);
                     setToken(response.data.token);
                     setWsUrl(response.data.wsUrl);
                 } catch (error) {
@@ -45,16 +71,19 @@ const LivePage: React.FC = () => {
             }
         };
         fetchToken();
-    }, [user, navigate]);
+    }, [user, navigate, roomName]);
 
     useEffect(() => {
-        if (user) {
+        if (user && roomName) {
             const newSocket = io(import.meta.env.VITE_API_URL || 'http://localhost:3333');
             setSocket(newSocket);
+            newSocket.on('connect', () => {
+                newSocket.emit('join_room', roomName);
+            });
             return () => { newSocket.disconnect(); };
         }
-    }, [user]);
-
+    }, [user, roomName]);
+    
     useEffect(() => {
         if (socket) {
             const handleNewMessage = (msg: ChatMessage) => {
@@ -67,15 +96,25 @@ const LivePage: React.FC = () => {
 
     const handleSendMessage = (e: FormEvent) => {
         e.preventDefault();
-        if (inputValue.trim() && user && socket) {
+        if (inputValue.trim() && user && socket && roomName) {
             const messageData: ChatMessage = {
                 id: new Date().getTime().toString(),
                 text: inputValue,
                 user: { id: user.id, name: user.name },
             };
-            socket.emit('chat message', messageData);
+            socket.emit('chat message', messageData, roomName);
             setMessages(prevMessages => [...prevMessages, messageData]);
             setInputValue('');
+        }
+    };
+
+    const onLiveStop = async () => {
+        try {
+            await api.post('/live/stop');
+        } catch (error) {
+            console.error("Erro ao tentar parar a live no backend:", error);
+        } finally {
+            navigate('/lives');
         }
     };
 
@@ -98,12 +137,10 @@ const LivePage: React.FC = () => {
                 serverUrl={wsUrl}
                 data-lk-theme="default"
                 style={{ height: 'calc(100vh - 64px)' }}
+                onDisconnected={onLiveStop}
             >
                 <div className="flex flex-col md:flex-row h-full">
-                    <div className="flex-grow flex flex-col">
-                        <VideoConference />
-                    </div>
-
+                    <LiveLayout />
                     <div className="w-full md:w-80 lg:w-96 bg-gray-800 flex flex-col flex-shrink-0 border-l border-gray-700 h-full">
                         <div className="p-4 border-b border-gray-700"><h2 className="text-xl font-semibold">Chat ao Vivo</h2></div>
                         <div className="flex-grow p-4 space-y-4 overflow-y-auto">

@@ -1,4 +1,4 @@
-// src/pages/Lives.tsx (VERSÃO FINAL COM TEMPO REAL)
+// src/pages/Lives.tsx (VERSÃO 100% COMPLETA E CORRIGIDA)
 
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
@@ -18,7 +18,6 @@ const Lives: React.FC = () => {
   const [liveUsers, setLiveUsers] = useState<LiveUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Busca inicial de dados via API
   useEffect(() => {
     const fetchLiveUsers = async () => {
       setIsLoading(true);
@@ -36,14 +35,11 @@ const Lives: React.FC = () => {
     fetchLiveUsers();
   }, []);
 
-  // Lógica de tempo real com Socket.IO
   useEffect(() => {
     const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:3333');
 
-    // Ouve pelo evento 'live_started' emitido pelo backend
     socket.on('live_started', (newLiveUser: LiveUser) => {
       setLiveUsers((currentUsers) => {
-        // Adiciona o novo usuário apenas se ele já não estiver na lista
         if (!currentUsers.some(user => user.id === newLiveUser.id)) {
           return [...currentUsers, newLiveUser];
         }
@@ -51,12 +47,10 @@ const Lives: React.FC = () => {
       });
     });
 
-    // Ouve pelo evento 'live_stopped' emitido pelo backend
     socket.on('live_stopped', (data: { userId: number }) => {
       setLiveUsers((currentUsers) => currentUsers.filter(user => user.id !== data.userId));
     });
 
-    // Limpa a conexão ao desmontar o componente
     return () => {
       socket.disconnect();
     };
@@ -82,7 +76,8 @@ const Lives: React.FC = () => {
           ) : liveUsers.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {liveUsers.map(user => (
-                <Link to={`/live/${user.id}`} key={user.id} className="group block bg-gray-800 rounded-lg overflow-hidden shadow-lg hover:scale-105 transition-transform duration-300">
+                // AQUI ESTÁ A CORREÇÃO PRINCIPAL DESTE ARQUIVO
+                <Link to={`/live/live-${user.id}`} key={user.id} className="group block bg-gray-800 rounded-lg overflow-hidden shadow-lg hover:scale-105 transition-transform duration-300">
                   <div className="relative">
                     <img
                       src={user.profilePictureUrl || `https://i.pravatar.cc/400?u=${user.id}`}
