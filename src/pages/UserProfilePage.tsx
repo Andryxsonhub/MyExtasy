@@ -1,4 +1,4 @@
-// src/pages/UserProfilePage.tsx (VERSÃO CORRIGIDA FINAL)
+// src/pages/UserProfilePage.tsx (VERSÃO ATUALIZADA)
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -10,17 +10,14 @@ import ProfileSidebar from '../components/ProfileSidebar';
 import CreatePost from '../components/CreatePost';
 import EditProfileModal from '../components/EditProfileModal';
 import PostList from '../components/PostList';
-// ALTERAÇÃO 1: Importamos TODOS os nossos tipos do arquivo central
-import type { Post, UserData, Photo, Video } from '../types/types'; 
+import type { Post, UserData, Photo, Video } from '../types/types';
 import UploadPhotoModal from '../components/UploadPhotoModal';
 import UploadVideoModal from '../components/UploadVideoModal';
 import AboutTabContent from '../components/tabs/AboutTabContent';
 import PhotosTabContent from '../components/tabs/PhotosTabContent';
 import VideosTabContent from '../components/tabs/VideosTabContent';
 import CertificationModal from '../components/CertificationModal';
-
-// ALTERAÇÃO 2: REMOVEMOS TODAS as interfaces locais daqui. 
-// Agora, a única fonte da verdade é o 'types/types.ts'.
+import StatsModal from '../components/StatsModal'; // NOVO: Importa o modal de estatísticas
 
 const UserProfilePage: React.FC = () => {
   const navigate = useNavigate();
@@ -33,6 +30,7 @@ const UserProfilePage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('posts');
+
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const openEditModal = () => setIsEditModalOpen(true);
   const closeEditModal = () => setIsEditModalOpen(false);
@@ -48,6 +46,11 @@ const UserProfilePage: React.FC = () => {
   const [isCertificationModalOpen, setIsCertificationModalOpen] = useState(false);
   const openCertificationModal = () => setIsCertificationModalOpen(true);
   const closeCertificationModal = () => setIsCertificationModalOpen(false);
+
+  // NOVO: Estado e funções para o modal de estatísticas
+  const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
+  const openStatsModal = () => setIsStatsModalOpen(true);
+  const closeStatsModal = () => setIsStatsModalOpen(false);
 
   const fetchData = useCallback(async () => {
     const token = localStorage.getItem('authToken');
@@ -76,7 +79,7 @@ const UserProfilePage: React.FC = () => {
     setIsLoading(true);
     fetchData().finally(() => setIsLoading(false));
   }, [fetchData]);
-  console.log('[PÁGINA] Estado userData:', userData);
+
   return (
     <Layout>
       <div className="container mx-auto px-4 pt-24 pb-12">
@@ -98,17 +101,26 @@ const UserProfilePage: React.FC = () => {
                 </div>
               </div>
             </div>
+            {/* NOVO: Passamos a nova função openStatsModal para o sidebar */}
             <div className="w-full md:w-1/3"> 
-              <ProfileSidebar user={userData} onViewCertificationClick={openCertificationModal} /> 
+              <ProfileSidebar 
+                user={userData} 
+                onViewCertificationClick={openCertificationModal} 
+                onViewStatsClick={openStatsModal}
+              /> 
             </div>
           </div>
         )}
       </div>
       
+      {/* Modais existentes */}
       <EditProfileModal isOpen={isEditModalOpen} onClose={closeEditModal} currentUser={userData} onUpdateSuccess={handleUpdateSuccess} />
       <UploadPhotoModal isOpen={isUploadPhotoModalOpen} onClose={closeUploadPhotoModal} onUploadSuccess={fetchData} />
       <UploadVideoModal isOpen={isUploadVideoModalOpen} onClose={closeUploadVideoModal} onUploadSuccess={fetchData} />
       <CertificationModal isOpen={isCertificationModalOpen} onClose={closeCertificationModal} user={userData} />
+
+      {/* NOVO: Renderizamos o nosso novo modal de estatísticas */}
+      <StatsModal isOpen={isStatsModalOpen} onClose={closeStatsModal} user={userData} />
     </Layout>
   );
 };
