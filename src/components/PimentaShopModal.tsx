@@ -1,31 +1,29 @@
-// src/components/PimentaShopModal.tsx (VERSÃO FINALÍSSIMA SEM AVISOS)
+// VERSÃO SIMPLIFICADA - Removida a opção de Débito
 
-// ALTERAÇÃO: 'FormEvent' foi removido daqui, pois usamos 'React.FormEvent' no código.
 import React, { useState, useEffect } from 'react';
-
 import api from '@/services/api';
 import { toast } from "sonner";
 import { useAuth } from '@/contexts/AuthProvider';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { Loader2, X, Copy, CreditCard, QrCode } from 'lucide-react';
+import { Loader2, X, Copy, CreditCard, QrCode, AlertTriangle } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
+import usePagSeguroScript from '@/hooks/usePagSeguroScript';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 declare const PagSeguro: any;
 
+// --- INTERFACES ---
 interface PimentaPackage {
   id: number;
   name: string;
   priceInCents: number;
   pimentaAmount: number;
 }
-
 interface PimentaShopModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
-
 interface PaymentFormData {
   holderName: string;
   holderDocument: string;
@@ -33,15 +31,14 @@ interface PaymentFormData {
   expiry: string;
   cvv: string;
 }
-
 interface PaymentFormProps {
   selectedPackage: PimentaPackage;
   onSubmit: (cardData: PaymentFormData) => void;
   onBack: () => void;
   isProcessing: boolean;
   error: string | null;
+  isScriptReady: boolean;
 }
-
 interface PagBankLink {
   rel: string;
   href: string;
@@ -55,6 +52,7 @@ const formatPrice = (priceInCents: number) => {
 };
 
 const PimentaShopModal: React.FC<PimentaShopModalProps> = ({ isOpen, onClose }) => {
+  const scriptStatus = usePagSeguroScript();
   const [packages, setPackages] = useState<PimentaPackage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedPackage, setSelectedPackage] = useState<PimentaPackage | null>(null);
@@ -98,6 +96,7 @@ const PimentaShopModal: React.FC<PimentaShopModalProps> = ({ isOpen, onClose }) 
   };
 
   const handlePayWithPix = async () => {
+    // ... (código do PIX permanece inalterado)
     if (!selectedPackage) return;
     setIsProcessing(true);
     try {
@@ -119,9 +118,13 @@ const PimentaShopModal: React.FC<PimentaShopModalProps> = ({ isOpen, onClose }) 
   };
 
   const handleSubmitCardPayment = async (cardData: PaymentFormData) => {
-    if (!selectedPackage) return;
+    if (!selectedPackage || scriptStatus !== 'ready') {
+      setPaymentError("Serviço de pagamento indisponível. Tente novamente em instantes.");
+      return;
+    }
     setIsProcessing(true);
     setPaymentError(null);
+    
     const card = {
       publicKey: import.meta.env.VITE_PAGBANK_PUBLIC_KEY,
       holder: cardData.holderName,
@@ -130,6 +133,7 @@ const PimentaShopModal: React.FC<PimentaShopModalProps> = ({ isOpen, onClose }) 
       expYear: '20' + cardData.expiry.split('/')[1],
       securityCode: cardData.cvv,
     };
+
     const result = PagSeguro.encryptCard(card);
     if (result.hasErrors) {
       const errorCode = result.errors[0].code;
@@ -137,7 +141,9 @@ const PimentaShopModal: React.FC<PimentaShopModalProps> = ({ isOpen, onClose }) 
       setIsProcessing(false);
       return;
     }
+
     const encryptedCard = result.encryptedCard;
+
     try {
       const response = await api.post('/payments/process-card', {
         packageId: selectedPackage.id,
@@ -145,11 +151,13 @@ const PimentaShopModal: React.FC<PimentaShopModalProps> = ({ isOpen, onClose }) 
         holderName: cardData.holderName,
         holderDocument: cardData.holderDocument.replace(/\D/g, ''),
       });
+
       toast.success('Compra realizada!', { description: 'Suas pimentas foram adicionadas com sucesso.' });
       if (user) {
         setUser({ ...user, pimentaBalance: response.data.newPimentaBalance });
       }
       onClose();
+
     } catch (error) {
       let errorMessage = 'Não foi possível processar seu pagamento.';
       if (typeof error === 'object' && error !== null && 'response' in error) {
@@ -172,7 +180,11 @@ const PimentaShopModal: React.FC<PimentaShopModalProps> = ({ isOpen, onClose }) 
             <div className="text-center mb-8"><h2 className="text-3xl font-bold text-primary">Escolha como pagar</h2><p className="text-lg text-muted-foreground mt-2">Você está comprando: <span className="font-bold text-foreground">{selectedPackage.name}</span></p><p className="text-2xl font-bold text-foreground">{formatPrice(selectedPackage.priceInCents)}</p></div>
             <div className="max-w-md mx-auto space-y-4">
               <Button onClick={handlePayWithPix} size="lg" className="w-full" disabled={isProcessing}>{isProcessing ? <Loader2 className="animate-spin" /> : <><QrCode className="mr-2 h-5 w-5"/> Pagar com PIX</>}</Button>
-              <Button onClick={() => setStep('show_card_form')} size="lg" className="w-full" variant="outline"><CreditCard className="mr-2 h-5 w-5"/> Pagar com Cartão</Button>
+              <Button onClick={() => setStep('show_card_form')} size="lg" className="w-full" variant="outline" disabled={scriptStatus !== 'ready'}>
+                {scriptStatus === 'loading' && <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Carregando...</>}
+                {scriptStatus === 'ready' && <><CreditCard className="mr-2 h-5 w-5"/> Pagar com Cartão</>}
+                {scriptStatus === 'error' && <><AlertTriangle className="mr-2 h-5 w-5 text-red-500"/> Erro no Serviço</>}
+              </Button>
               <Button onClick={() => setStep('select_package')} variant="ghost" className="w-full">Voltar</Button>
             </div>
           </div>
@@ -188,7 +200,7 @@ const PimentaShopModal: React.FC<PimentaShopModalProps> = ({ isOpen, onClose }) 
           </div>
         );
       case 'show_card_form':
-        return <PaymentForm selectedPackage={selectedPackage!} onSubmit={handleSubmitCardPayment} onBack={() => setStep('select_method')} isProcessing={isProcessing} error={paymentError} />;
+        return <PaymentForm selectedPackage={selectedPackage!} onSubmit={handleSubmitCardPayment} onBack={() => setStep('select_method')} isProcessing={isProcessing} error={paymentError} isScriptReady={scriptStatus === 'ready'} />;
       default:
         return (
           <div>
@@ -224,14 +236,27 @@ const PimentaShopModal: React.FC<PimentaShopModalProps> = ({ isOpen, onClose }) 
   );
 };
 
-const PaymentForm: React.FC<PaymentFormProps> = ({ selectedPackage, onSubmit, onBack, isProcessing, error }) => {
+const PaymentForm: React.FC<PaymentFormProps> = ({ selectedPackage, onSubmit, onBack, isProcessing, error, isScriptReady }) => {
   const [formData, setFormData] = useState<PaymentFormData>({ holderName: '', holderDocument: '', cardNumber: '', expiry: '', cvv: '' });
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => { const { name, value } = e.target; setFormData(prev => ({ ...prev, [name]: value })); };
-  const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onSubmit(formData); };
+  
+  const handleSubmit = (e: React.FormEvent) => { 
+    e.preventDefault(); 
+    onSubmit(formData); 
+  };
+
   return (
     <div>
-      <div className="text-center mb-6"><h2 className="text-3xl font-bold text-primary">Pagamento</h2><p className="text-lg text-muted-foreground mt-2">Você está comprando: <span className="font-bold text-foreground">{selectedPackage.name}</span></p><p className="text-2xl font-bold text-foreground">{formatPrice(selectedPackage.priceInCents)}</p></div>
+      <div className="text-center mb-6">
+        {/* Título alterado para ser genérico */}
+        <h2 className="text-3xl font-bold text-primary">Pagamento com Cartão</h2>
+        <p className="text-lg text-muted-foreground mt-2">Você está comprando: <span className="font-bold text-foreground">{selectedPackage.name}</span></p>
+        <p className="text-2xl font-bold text-foreground">{formatPrice(selectedPackage.priceInCents)}</p>
+      </div>
+
       <form onSubmit={handleSubmit} className="max-w-md mx-auto space-y-4">
+        {/* Botões de Crédito/Débito REMOVIDOS */}
         <Input name="holderName" placeholder="Nome do Titular (como no cartão)" value={formData.holderName} onChange={handleInputChange} required />
         <Input name="holderDocument" placeholder="CPF do Titular" value={formData.holderDocument} onChange={handleInputChange} required />
         <Input name="cardNumber" placeholder="Número do Cartão" value={formData.cardNumber} onChange={handleInputChange} required />
@@ -239,10 +264,14 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ selectedPackage, onSubmit, on
           <Input name="expiry" placeholder="Validade (MM/AA)" className="w-1/2" value={formData.expiry} onChange={handleInputChange} required />
           <Input name="cvv" placeholder="CVV" className="w-1/2" value={formData.cvv} onChange={handleInputChange} required />
         </div>
+        
         {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+
         <div className="flex flex-col sm:flex-row gap-4 pt-4">
           <Button type="button" onClick={onBack} variant="outline" className="w-full" disabled={isProcessing}>Voltar</Button>
-          <Button type="submit" className="w-full" disabled={isProcessing}>{isProcessing ? <Loader2 className="animate-spin" /> : `Pagar ${formatPrice(selectedPackage.priceInCents)}`}</Button>
+          <Button type="submit" className="w-full" disabled={!isScriptReady || isProcessing}>
+            {!isScriptReady ? <><Loader2 className="animate-spin mr-2" />Aguarde...</> : `Pagar ${formatPrice(selectedPackage.priceInCents)}`}
+          </Button>
         </div>
       </form>
     </div>

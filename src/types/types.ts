@@ -1,4 +1,4 @@
-// src/types/types.ts (VERSÃO CORRETA E CENTRALIZADA)
+// src/types/types.ts (VERSÃO COMPLETA E CORRIGIDA)
 
 import { ReactNode } from 'react';
 
@@ -23,16 +23,21 @@ export interface Post {
   createdAt: string;
 }
 
-// Interface para os dados do Usuário (versão completa e correta)
+// Interface para os dados do Usuário (agora realmente completa)
 export interface UserData {
   id: number;
   name: string;
   email: string;
-  bio: string | null;
   profilePictureUrl: string | null;
   location: string | null;
   gender: string | null;
   createdAt: string;
   lastSeenAt: string | null;
   pimentaBalance?: number;
+  
+  // --- CAMPOS ADICIONADOS PARA A ABA "SOBRE" ---
+  bio: string | null;
+  interests: string | null;
+  desires: string | null;
+  fetishes: string | null;
 }

@@ -1,6 +1,6 @@
-// src/pages/UserProfilePage.tsx (VERSÃO COMPLETA E FINAL COM VÍDEOS)
+// src/pages/UserProfilePage.tsx
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import Layout from '../components/Layout';
@@ -11,12 +11,12 @@ import CreatePost from '../components/CreatePost';
 import EditProfileModal from '../components/EditProfileModal';
 import PostList from '../components/PostList';
 import { Button } from '@/components/ui/button';
-import { PlusCircle } from 'lucide-react';
-import type { UserData, Post } from '../types/types';
+import { PlusCircle, Info } from 'lucide-react';
+import type { Post } from '../types/types';
 import UploadPhotoModal from '../components/UploadPhotoModal';
-import UploadVideoModal from '../components/UploadVideoModal'; // 1. IMPORTAMOS O NOVO MODAL
+import UploadVideoModal from '../components/UploadVideoModal';
 
-// Definimos os tipos para uma Foto e um Vídeo
+// Interfaces
 interface Photo {
   id: number; url: string; description: string | null; createdAt: string;
 }
@@ -24,12 +24,65 @@ interface Video {
   id: number; url: string; description: string | null; createdAt: string;
 }
 
+interface UserData {
+  id: number; name: string; email: string; bio: string | null; 
+  profilePictureUrl: string | null; location: string | null; 
+  gender: string | null; createdAt: string; lastSeenAt: string | null;
+  interests: string | null;
+  desires: string | null;
+  fetishes: string | null;
+}
+
+// Componentes da Aba "Sobre"
+const ProfileDetailSection: React.FC<{ title: string; content: string | null | undefined }> = ({ title, content }) => {
+  if (!content) return null;
+  return (
+    <div className="mb-8">
+      <h3 className="text-xl font-bold text-pink-400 mb-3 border-b-2 border-gray-700 pb-2">{title}</h3>
+      <p className="text-gray-300 whitespace-pre-wrap leading-relaxed">{content}</p>
+    </div>
+  );
+};
+
+const TagsSection: React.FC<{ title: string; content: string | null | undefined }> = ({ title, content }) => {
+  if (!content) return null;
+
+  let tags: string[] = [];
+  try {
+    const parsed = JSON.parse(content);
+    if (Array.isArray(parsed)) {
+      tags = parsed;
+    } else {
+      tags = content.split(',').map(tag => tag.trim());
+    }
+  } catch {
+    tags = content.split(',').map(tag => tag.trim());
+  }
+
+  const validTags = tags.filter(Boolean);
+  if (validTags.length === 0) return null;
+
+  return (
+    <div className="mb-8">
+      <h3 className="text-xl font-bold text-pink-400 mb-3 border-b-2 border-gray-700 pb-2">{title}</h3>
+      <div className="flex flex-wrap gap-3">
+        {validTags.map((tag, index) => (
+          <span key={index} className="bg-gray-700 text-gray-200 text-sm font-medium px-4 py-2 rounded-full shadow-md">
+            {/* CORREÇÃO AQUI: Barra \ removida antes do [ */}
+            {tag.replace(/["[]]/g, '')}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const UserProfilePage: React.FC = () => {
   const navigate = useNavigate();
   const [userData, setUserData] = useState<UserData | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [photos, setPhotos] = useState<Photo[]>([]);
-  const [videos, setVideos] = useState<Video[]>([]); // 2. CRIAMOS O ESTADO PARA VÍDEOS
+  const [videos, setVideos] = useState<Video[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('posts');
@@ -42,12 +95,11 @@ const UserProfilePage: React.FC = () => {
   const openUploadPhotoModal = () => setIsUploadPhotoModalOpen(true);
   const closeUploadPhotoModal = () => setIsUploadPhotoModalOpen(false);
   
-  // 3. ADICIONAMOS O CONTROLE PARA O MODAL DE VÍDEO
   const [isUploadVideoModalOpen, setIsUploadVideoModalOpen] = useState(false);
   const openUploadVideoModal = () => setIsUploadVideoModalOpen(true);
   const closeUploadVideoModal = () => setIsUploadVideoModalOpen(false);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     const token = localStorage.getItem('authToken');
     if (!token) {  
       navigate('/entrar');  
@@ -55,36 +107,33 @@ const UserProfilePage: React.FC = () => {
     }
     try {
       setError(null);
-      
-      // 4. ATUALIZAMOS A BUSCA PARA INCLUIR OS VÍDEOS
       const [profileResponse, postsResponse, photosResponse, videosResponse] = await Promise.all([
         api.get('/users/profile'),
         api.get('/posts'),
         api.get('/users/photos'),
-        api.get('/users/videos') // <-- A NOVA CHAMADA DE API!
+        api.get('/users/videos')
       ]);
       
       setUserData(profileResponse.data);
       setPosts(postsResponse.data);
       setPhotos(photosResponse.data);
-      setVideos(videosResponse.data); // <-- GUARDAMOS OS VÍDEOS NO ESTADO
-
+      setVideos(videosResponse.data);
     } catch (err) {
       setError('Erro ao carregar os dados do perfil.');
       console.error('Erro ao buscar dados:', err);
-    } finally {
-      if (isLoading) setIsLoading(false);
     }
-  };
+  }, [navigate]);
   
   const handleUpdateSuccess = (updatedUser: UserData) => { setUserData(updatedUser); };
 
   useEffect(() => {
     setIsLoading(true);
-    fetchData();
-  }, [navigate]);
+    fetchData().finally(() => setIsLoading(false));
+  }, [fetchData]);
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
+  const hasAboutInfo = userData?.bio || userData?.interests || userData?.desires || userData?.fetishes;
 
   return (
     <Layout>
@@ -100,11 +149,27 @@ const UserProfilePage: React.FC = () => {
               <div className="bg-card p-6 rounded-lg shadow-lg">
                 <ProfileTabs activeTab={activeTab} onTabChange={setActiveTab} />
                 <div className="mt-6">
-                  {/* Abas de Posts e Sobre (sem mudanças) */}
                   {activeTab === 'posts' && ( <> <CreatePost userProfilePicture={userData.profilePictureUrl} onPostCreated={fetchData} /> <div className="mt-8"> <PostList posts={posts} /> </div> </> )}
-                  {activeTab === 'about' && ( <div> <p className="text-white">Informações detalhadas do usuário virão aqui.</p> </div> )}
                   
-                  {/* Aba de Fotos (sem mudanças) */}
+                  {activeTab === 'about' && (
+                    <div>
+                      {hasAboutInfo ? (
+                        <>
+                          <ProfileDetailSection title="Biografia" content={userData.bio} />
+                          <TagsSection title="Interesses" content={userData.interests} />
+                          <TagsSection title="Desejos" content={userData.desires} />
+                          <TagsSection title="Fetiches" content={userData.fetishes} />
+                        </>
+                      ) : (
+                        <div className="text-center text-gray-500 py-16 border-2 border-dashed border-gray-700 rounded-lg">
+                          <Info className="mx-auto w-12 h-12 text-gray-600 mb-4" />
+                          <h3 className="text-lg font-semibold text-white">Informações não preenchidas</h3>
+                          <p className="mt-1">Edite seu perfil para compartilhar mais sobre você.</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
                   {activeTab === 'photos' && (
                     <div>
                       <div className="flex justify-between items-center mb-6">
@@ -121,25 +186,24 @@ const UserProfilePage: React.FC = () => {
                     </div>
                   )}
 
-                  {/* 5. ATUALIZAMOS A VISUALIZAÇÃO DA ABA DE VÍDEOS */}
                   {activeTab === 'videos' && (
-                     <div>
-                       <div className="flex justify-between items-center mb-6">
-                         <h3 className="text-2xl font-bold text-white">Meus Vídeos</h3>
-                         <Button onClick={openUploadVideoModal}> <PlusCircle className="w-4 h-4 mr-2" /> Adicionar Novo Vídeo </Button>
-                       </div>
-                       {videos.length > 0 ? (
-                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                           {videos.map((video) => (
-                             <div key={video.id} className="relative aspect-video bg-black rounded-lg overflow-hidden">
-                               <video src={`${API_URL}${video.url}`} controls className="w-full h-full object-contain" />
-                             </div>
-                           ))}
-                         </div>
-                       ) : (
-                         <div className="text-center text-gray-500 py-16 border-2 border-dashed border-gray-700 rounded-lg"> <p>Nenhum vídeo publicado ainda.</p> <p className="text-sm mt-1">Que tal adicionar o primeiro?</p> </div>
-                       )}
-                     </div>
+                        <div>
+                          <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-2xl font-bold text-white">Meus Vídeos</h3>
+                            <Button onClick={openUploadVideoModal}> <PlusCircle className="w-4 h-4 mr-2" /> Adicionar Novo Vídeo </Button>
+                          </div>
+                          {videos.length > 0 ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                              {videos.map((video) => (
+                                <div key={video.id} className="relative aspect-video bg-black rounded-lg overflow-hidden">
+                                  <video src={`${API_URL}${video.url}`} controls className="w-full h-full object-contain" />
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-center text-gray-500 py-16 border-2 border-dashed border-gray-700 rounded-lg"> <p>Nenhum vídeo publicado ainda.</p> <p className="text-sm mt-1">Que tal adicionar o primeiro?</p> </div>
+                          )}
+                        </div>
                   )}
                 </div>
               </div>
@@ -149,11 +213,8 @@ const UserProfilePage: React.FC = () => {
         )}
       </div>
       
-      {/* Modais existentes (sem mudanças) */}
       <EditProfileModal isOpen={isEditModalOpen} onClose={closeEditModal} currentUser={userData} onUpdateSuccess={handleUpdateSuccess} />
       <UploadPhotoModal isOpen={isUploadPhotoModalOpen} onClose={closeUploadPhotoModal} onUploadSuccess={fetchData} />
-      
-      {/* 6. ADICIONAMOS O NOVO MODAL DE VÍDEO À PÁGINA */}
       <UploadVideoModal isOpen={isUploadVideoModalOpen} onClose={closeUploadVideoModal} onUploadSuccess={fetchData} />
     </Layout>
   );
