@@ -23,7 +23,7 @@ const LiveControls = () => {
         }
 
         try {
-            await api.post('/live/start');
+            await api.post('/lives/start');
             
             const roomName = `live-${user.id}`;
             

@@ -22,7 +22,7 @@ const Lives: React.FC = () => {
     const fetchLiveUsers = async () => {
       setIsLoading(true);
       try {
-        const response = await api.get('/live/active');
+        const response = await api.get('/lives/active');
         if (Array.isArray(response.data)) {
           setLiveUsers(response.data);
         }

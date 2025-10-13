@@ -50,7 +50,7 @@ const LivePage: React.FC = () => {
     const { roomName } = useParams<{ roomName: string }>(); 
     const navigate = useNavigate();
     const { user } = useAuth();
-    const { roomName } = useParams<{ roomName: string }>();
+    // const { roomName } = useParams<{ roomName: string }>();
     
     const [token, setToken] = useState<string | null>(null);
     const [wsUrl, setWsUrl] = useState<string | null>(null);
@@ -62,7 +62,7 @@ const LivePage: React.FC = () => {
         const fetchToken = async () => {
             if (user && roomName) {
                 try {
-                    const response = await api.get(`/live/token/${roomName}`);
+                    const response = await api.get(`/lives/token/${roomName}`);
                     setToken(response.data.token);
                     setWsUrl(response.data.wsUrl);
                 } catch (error) {
