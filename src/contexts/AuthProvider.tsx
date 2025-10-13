@@ -48,7 +48,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setUser(null);
     setIsLoggedIn(false);
     // Leva o usuário de volta para a tela de login
-    navigate('/login', { replace: true });
+   navigate('/entrar', { replace: true }); // <-- Correção aqui
   };
 
   return (
