@@ -1,9 +1,9 @@
-// src/components/registration/UsernameStep.tsx (VERSÃO CORRIGIDA E ATUALIZADA)
+// src/components/registration/UsernameStep.tsx
 
 import React, { useState } from 'react';
 import { Check, Calendar as CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale'; // Para formatar a data e o calendário em português
+import { ptBR } from 'date-fns/locale';
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -17,32 +17,35 @@ interface Props {
   onBack: () => void;
 }
 
-// --- LÓGICA DE VALIDAÇÃO ---
 const isUserAdult = (birthDate: Date): boolean => {
   const today = new Date();
   const eighteenYearsAgo = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
   return birthDate <= eighteenYearsAgo;
 };
 
-// --- VALOR INICIAL PARA O CALENDÁRIO ---
 const initialCalendarDate = new Date();
 initialCalendarDate.setFullYear(initialCalendarDate.getFullYear() - 18);
 
 
 const UsernameStep: React.FC<Props> = ({ onNext, onBack }) => {
+  // --- ALTERAÇÃO 1: Adicionamos o estado para o nome completo ---
+  const [name, setName] = useState('');
   const [username, setUsername] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState<Date | undefined>();
   const [month, setMonth] = useState<Date>(initialCalendarDate);
   const [isCalendarOpen, setCalendarOpen] = useState(false);
 
-
+  // --- ALTERAÇÃO 2: Adicionamos a validação para o nome ---
+  const isNameValid = name.trim().length > 2;
   const isUsernameValid = username.length > 3;
   const isAgeValid = dateOfBirth ? isUserAdult(dateOfBirth) : false;
-  const isFormValid = isUsernameValid && isAgeValid;
+  // O formulário só é válido se TODOS os campos forem válidos
+  const isFormValid = isNameValid && isUsernameValid && isAgeValid;
 
   const handleNextClick = () => {
     if (!isFormValid) return;
-    onNext({ username, dateOfBirth });
+    // --- ALTERAÇÃO 3: Enviamos o 'name' junto com os outros dados ---
+    onNext({ name, username, dateOfBirth });
   };
 
   const handleDateSelect = (date: Date | undefined) => {
@@ -61,7 +64,22 @@ const UsernameStep: React.FC<Props> = ({ onNext, onBack }) => {
           <p className="text-gray-300 mt-2">Como prefere ser chamado e quando você nasceu?</p>
       </div>
       
-      {/* CAMPO DE NOME DE USUÁRIO (Existente) */}
+      {/* --- ALTERAÇÃO 4: Adicionamos o campo de input para o Nome Completo --- */}
+      <div className="relative mb-6 text-left">
+          <label className="text-sm font-medium text-gray-300 mb-2 block">Nome completo</label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Digite seu nome completo"
+            className="w-full px-4 py-3 bg-gray-800 text-white border-2 border-gray-600 rounded-lg focus:outline-none focus:border-pink-500 transition-colors"
+          />
+          {isNameValid && (
+            <Check className="absolute right-4 top-10 -translate-y-1/2 text-green-500" />
+          )}
+      </div>
+
+      {/* CAMPO DE NOME DE USUÁRIO (Existente, sem alterações) */}
       <div className="relative mb-6 text-left">
           <label className="text-sm font-medium text-gray-300 mb-2 block">Nome de usuário</label>
           <input
@@ -76,7 +94,7 @@ const UsernameStep: React.FC<Props> = ({ onNext, onBack }) => {
           )}
       </div>
       
-      {/* CAMPO DE DATA DE NASCIMENTO COM CALENDÁRIO */}
+      {/* CAMPO DE DATA DE NASCIMENTO COM CALENDÁRIO (Existente, sem alterações) */}
       <div className="relative mb-4 text-left">
          <label className="text-sm font-medium text-gray-300 mb-2 block">Sua data de nascimento</label>
           <Popover open={isCalendarOpen} onOpenChange={setCalendarOpen}>
@@ -92,7 +110,6 @@ const UsernameStep: React.FC<Props> = ({ onNext, onBack }) => {
                 {dateOfBirth ? format(dateOfBirth, "dd 'de' MMMM 'de' yyyy", { locale: ptBR }) : <span>Selecione sua data</span>}
               </Button>
             </PopoverTrigger>
-            {/* --- CORREÇÃO FINAL: Forçando o calendário a ficar na frente --- */}
             <PopoverContent 
               className="w-auto p-0 z-50" 
               align="start"
@@ -134,4 +151,3 @@ const UsernameStep: React.FC<Props> = ({ onNext, onBack }) => {
 };
 
 export default UsernameStep;
-

@@ -33,9 +33,9 @@ import ExplorePage from "./pages/ExplorePage";
 const queryClient = new QueryClient();
 
 const GithubCallbackHandler = () => {
-  const { setIsLoggedIn } = useAuth();
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+    const { setIsLoggedIn } = useAuth();
+    const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
 
   useEffect(() => {
     const authenticateWithCode = async (code: string) => {
@@ -59,21 +59,21 @@ const GithubCallbackHandler = () => {
     else { navigate('/entrar', { state: { error: 'Código de autorização do GitHub não encontrado.' } }); }
   }, [navigate, searchParams, setIsLoggedIn]);
 
-  return <div className="flex justify-center items-center h-screen bg-background"><p className="text-white text-xl animate-pulse">Autenticando...</p></div>;
+    return <div className="flex justify-center items-center h-screen bg-background"><p className="text-white text-xl animate-pulse">Autenticando...</p></div>;
 };
 
 const AppRoutes = () => {
-  return (
-    <Routes>
-      <Route path="/auth/github/callback" element={<GithubCallbackHandler />} />
+    return (
+        <Routes>
+            <Route path="/auth/github/callback" element={<GithubCallbackHandler />} />
 
-      {/* --- Rotas Públicas --- */}
-      <Route path="/" element={<Index />} />
-      <Route path="/loja" element={<Loja />} />
-      <Route path="/planos" element={<Planos />} />
-      <Route path="/entrar" element={<Entrar />} />
-      <Route path="/sobre" element={<Sobre />} />
-      <Route path="/cadastrar" element={<RegistrationFlow />} />
+            {/* --- Rotas Públicas --- */}
+            <Route path="/" element={<Index />} />
+            <Route path="/loja" element={<Loja />} />
+            <Route path="/planos" element={<Planos />} />
+            <Route path="/entrar" element={<Entrar />} />
+            <Route path="/sobre" element={<Sobre />} />
+            <Route path="/cadastrar" element={<RegistrationFlow />} />
 
       {/* --- Rotas Protegidas --- */}
       <Route path="/explorar" element={<ProtectedRoute><Explorar /></ProtectedRoute>} />
@@ -97,22 +97,22 @@ const AppRoutes = () => {
 };
 
 const App = () => {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner position="top-center" />
-        <BrowserRouter>
-          <AuthProvider>
-            <Header />
-            <main className="pt-16">
-              <AppRoutes />
-            </main>
-          </AuthProvider>
-        </BrowserRouter>
-      </TooltipProvider>
-    </QueryClientProvider>
-  );
+    return (
+        <QueryClientProvider client={queryClient}>
+            <TooltipProvider>
+                <Toaster />
+                <Sonner position="top-center" />
+                <BrowserRouter>
+                    <AuthProvider>
+                        <Header />
+                        <main className="pt-16">
+                            <AppRoutes />
+                        </main>
+                    </AuthProvider>
+                </BrowserRouter>
+            </TooltipProvider>
+        </QueryClientProvider>
+    );
 };
 
 export default App;

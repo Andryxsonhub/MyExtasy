@@ -18,9 +18,9 @@ import { io, Socket } from 'socket.io-client';
 import type { UserData } from '@/types/types';
 
 interface ChatMessage {
-  id: string;
-  text: string;
-  user: Pick<UserData, 'id' | 'name'>;
+    id: string;
+    text: string;
+    user: Pick<UserData, 'id' | 'name'>;
 }
 
 const LiveLayout = () => {
@@ -46,6 +46,8 @@ const LiveLayout = () => {
 };
 
 const LivePage: React.FC = () => {
+    // 2. Lê o parâmetro "roomName" da URL (ex: "live-123")
+    const { roomName } = useParams<{ roomName: string }>(); 
     const navigate = useNavigate();
     const { user } = useAuth();
     const { roomName } = useParams<{ roomName: string }>();
@@ -65,14 +67,15 @@ const LivePage: React.FC = () => {
                     setWsUrl(response.data.wsUrl);
                 } catch (error) {
                     console.error('Erro ao buscar token do LiveKit:', error);
-                    alert('Não foi possível conectar à live. Redirecionando...');
-                    navigate('/lives');
+                    alert('Não foi possível conectar à live. Verifique se a live ainda está ativa.');
+                    navigate('/explorar'); // Redireciona de volta para a lista de lives
                 }
             }
         };
         fetchToken();
     }, [user, navigate, roomName]);
 
+    // O resto do seu código (lógica do chat) permanece exatamente o mesmo
     useEffect(() => {
         if (user && roomName) {
             const newSocket = io(import.meta.env.VITE_API_URL || 'http://localhost:3333');

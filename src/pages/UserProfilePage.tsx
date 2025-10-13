@@ -80,6 +80,7 @@ const UserProfilePage: React.FC = () => {
       setPosts(postsResponse.data);
       setPhotos(photosResponse.data);
       setVideos(videosResponse.data);
+      setVideos(videosResponse.data);
 
     } catch (err) {
       setError('Erro ao carregar os dados do perfil.');
