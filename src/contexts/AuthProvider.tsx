@@ -1,46 +1,36 @@
-// src/contexts/AuthProvider.tsx (VERSÃO CORRIGIDA E ROBUSTA)
+// src/contexts/AuthProvider.tsx (VERSÃO FINAL COM LOGOUT)
 
 import React, { useState, ReactNode, useEffect, useContext, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom'; // 1. IMPORTANTE: Importe o useNavigate
 import { AuthContext, User } from './AuthContext';
-import api from '../services/api'; // Precisamos do 'api' para buscar o usuário
+import api from '../services/api';
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [isLoggedIn, setIsLoggedIn] = useState(false); 
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate(); // 2. Inicialize o hook para podermos redirecionar
 
-  // Usamos useCallback para evitar que a função seja recriada desnecessariamente
   const verifyAuth = useCallback(async () => {
     const token = localStorage.getItem('authToken');
-
     if (token) {
       try {
-        // Passo 1: Informar ao 'api' para usar este token em todas as requisições
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-
-        // Passo 2: Buscar os dados do usuário no backend para confirmar que o token é válido
-        const response = await api.get('/auth/me'); // Crie esta rota no seu backend
-        
+        const response = await api.get('/auth/me');
         if (response.data) {
-          // Passo 3: Se tudo deu certo, atualizamos o estado DE UMA VEZ
           setUser(response.data);
           setIsLoggedIn(true);
         } else {
-          // Se não houver dados, o token é inválido
           throw new Error("Token inválido ou sessão expirada.");
         }
       } catch (error) {
-        // Se a chamada falhar (token expirado, etc.), limpamos tudo
         console.error("Falha na verificação de autenticação:", error);
         localStorage.removeItem('authToken');
-        api.defaults.headers.common['Authorization'] = null;
+        delete api.defaults.headers.common['Authorization'];
         setUser(null);
         setIsLoggedIn(false);
       }
     }
-    
-    // Passo 4: Apenas ao final de TODO o processo, dizemos que o carregamento terminou.
-    // Isso garante que o ProtectedRoute nunca tome uma decisão com dados incompletos.
     setIsLoading(false);
   }, []);
 
@@ -48,8 +38,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     verifyAuth();
   }, [verifyAuth]);
 
+  // 3. AQUI ESTÁ A FUNÇÃO DE LOGOUT QUE FALTAVA
+  const logout = () => {
+    // Limpa o token do armazenamento do navegador
+    localStorage.removeItem('authToken');
+    // Limpa o cabeçalho de autorização do Axios
+    delete api.defaults.headers.common['Authorization'];
+    // Reseta os estados de usuário e login
+    setUser(null);
+    setIsLoggedIn(false);
+    // Leva o usuário de volta para a tela de login
+    navigate('/login', { replace: true });
+  };
+
   return (
-    <AuthContext.Provider value={{ isLoggedIn, setIsLoggedIn, isLoading, user, setUser }}>
+    // 4. ADICIONE A FUNÇÃO 'logout' AO VALOR DO PROVIDER
+    <AuthContext.Provider value={{ isLoggedIn, setIsLoggedIn, isLoading, user, setUser, logout }}>
       {children}
     </AuthContext.Provider>
   );

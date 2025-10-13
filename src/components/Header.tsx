@@ -1,9 +1,9 @@
-// src/components/Header.tsx (VERSÃO FINAL CORRIGIDA)
+// src/components/Header.tsx (VERSÃO REATORADA E CORRIGIDA)
 
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { Button } from './ui/button';
-import { useAuth } from '../contexts/AuthProvider';
+import { useAuth } from '../contexts/AuthProvider'; // <-- JÁ ESTAVA CORRETO
 import newLogo from '../assets/logo_sem_fundo_limpo.png';
 import api from '../services/api'; 
 import PimentaShopModal from './PimentaShopModal';
@@ -11,30 +11,17 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Menu, X } from 'lucide-react';
 
 const Header: React.FC = () => {
-  const { isLoggedIn, user, setUser } = useAuth();
+  // 1. Pegamos a função 'logout' do nosso AuthProvider. Não precisamos mais do 'setUser'.
+  const { isLoggedIn, user, logout } = useAuth(); 
+  
   const navigate = useNavigate();
   const [isShopOpen, setShopOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const homeLink = isLoggedIn ? '/home' : '/';
 
-  const handleLogout = async () => {
-    try {
-      await api.post('/auth/logout');
-    } catch (error) {
-      console.error("Erro no logout do servidor, mas deslogando localmente:", error);
-    } finally {
-      localStorage.removeItem('authToken');
-      
-      // CORREÇÃO: A chamada 'setIsLoggedIn' foi removida. 
-      // A função 'setUser(null)' é a forma correta de sinalizar ao AuthProvider
-      // que o usuário foi deslogado. O provider é responsável por atualizar
-      // o estado 'isLoggedIn' em consequência disso.
-      setUser(null); 
-      
-      navigate('/');
-    }
-  };
+  // 2. A função 'handleLogout' local foi REMOVIDA. 
+  //    Não precisamos mais dela, pois vamos usar a função centralizada do AuthProvider.
 
   const avatarUrl = user?.profilePictureUrl
     ? `${import.meta.env.VITE_API_URL}${user.profilePictureUrl}`
@@ -81,7 +68,8 @@ const Header: React.FC = () => {
                     <AvatarFallback>{user?.name?.substring(0, 2).toUpperCase()}</AvatarFallback>
                   </Avatar>
                 </NavLink>
-                <Button onClick={handleLogout} variant="ghost" className="text-white hidden sm:inline-flex">Sair</Button>
+                {/* 3. Usamos a função 'logout' diretamente aqui */}
+                <Button onClick={logout} variant="ghost" className="text-white hidden sm:inline-flex">Sair</Button>
               </>
             ) : (
               <div className="flex items-center space-x-2">
@@ -117,7 +105,8 @@ const Header: React.FC = () => {
               <NavLink to="/lives" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => `block text-center py-2 text-base ${isActive ? 'text-primary' : 'text-white'}`}>Lives</NavLink>
               <NavLink to="/planos" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => `block text-center py-2 text-base ${isActive ? 'text-primary' : 'text-white'}`}>Planos</NavLink>
               <NavLink to="/sugestoes" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => `block text-center py-2 text-base ${isActive ? 'text-primary' : 'text-white'}`}>Sugestoes</NavLink>
-              <Button onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }} variant="ghost" className="text-white justify-center py-2 h-auto text-base mt-2 border-t border-border rounded-none">Sair</Button>
+              {/* 3. E usamos a função 'logout' aqui também, para o menu mobile */}
+              <Button onClick={() => { logout(); setIsMobileMenuOpen(false); }} variant="ghost" className="text-white justify-center py-2 h-auto text-base mt-2 border-t border-border rounded-none">Sair</Button>
             </nav>
           </div>
         )}

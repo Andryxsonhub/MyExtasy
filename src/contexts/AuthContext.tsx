@@ -1,30 +1,26 @@
-// src/contexts/AuthContext.ts (VERSÃO FINAL UNIFICADA)
+// src/contexts/AuthContext.ts (ATUALIZADO)
 
 import { createContext } from 'react';
 
-// Interface 'User' completa, unindo dados do DB e do login social
 export interface User {
-  id: number; // Usando 'number' para corresponder ao seu banco de dados (autoincrement)
+  id: number;
   name: string;
   email: string;
   bio?: string | null;
   profilePictureUrl?: string | null;
-  pimentaBalance: number; // <-- O CAMPO QUE RESOLVE O ERRO
-  
-  // Campos que podem vir do login social (GitHub, etc.)
+  pimentaBalance: number;
   username?: string;
   displayName?: string;
   photos?: Array<{ value: string }>;
-  
-  // Adicione aqui quaisquer outras propriedades que seu usuário tenha
 }
 
 export interface AuthContextType {
   isLoggedIn: boolean;
   setIsLoggedIn: (isLoggedIn: boolean) => void;
   isLoading: boolean;
-  user: User | null; 
+  user: User | null;
   setUser: (user: User | null) => void;
+  logout: () => void; // <-- ADICIONADO AQUI
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
