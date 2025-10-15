@@ -1,5 +1,3 @@
-// src/pages/Live.tsx (VERSÃO 100% COMPLETA COM CONTROLES E LÓGICA DE 'STOP')
-
 import React, { useState, useEffect, FormEvent } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '@/services/api';
@@ -8,6 +6,7 @@ import { useAuth } from '@/contexts/AuthProvider';
 import { 
     LiveKitRoom, 
     VideoTrack, 
+    AudioTrack, // 1. IMPORTAMOS O COMPONENTE DE ÁUDIO
     useTracks,
     ControlBar,
     useLocalParticipant
@@ -24,21 +23,35 @@ interface ChatMessage {
 }
 
 const LiveLayout = () => {
-    const tracks = useTracks([Track.Source.Camera]);
+    // 2. ALTERAÇÃO PRINCIPAL: AGORA PEDIMOS PELA CÂMERA E PELO MICROFONE
+    const tracks = useTracks([Track.Source.Camera, Track.Source.Microphone]);
     const { localParticipant } = useLocalParticipant();
 
-    const hostTrackRef = tracks.find(trackRef => trackRef.participant.permissions?.canPublish === true);
+    // Encontra a faixa de vídeo específica do host (quem está publicando)
+    const hostVideoTrack = tracks.find(trackRef => 
+        trackRef.participant.permissions?.canPublish === true && trackRef.source === Track.Source.Camera
+    );
+    
+    // Encontra TODAS as faixas de áudio na sala (do host e de outros, se aplicável)
+    const audioTracks = tracks.filter(trackRef => trackRef.source === Track.Source.Microphone);
+
     const isHost = localParticipant.permissions?.canPublish === true;
 
     return (
         <div className="flex-grow flex flex-col bg-black relative">
-            {hostTrackRef ? (
-                <VideoTrack trackRef={hostTrackRef} style={{ width: '100%', height: '100%' }} />
+            {hostVideoTrack ? (
+                <VideoTrack trackRef={hostVideoTrack} style={{ width: '100%', height: '100%' }} />
             ) : (
                 <div className="flex justify-center items-center h-full text-white">
                     Aguardando o início da transmissão...
                 </div>
             )}
+            
+            {/* 3. RENDERIZAMOS OS COMPONENTES DE ÁUDIO (ELES SÃO INVISÍVEIS) */}
+            {/* Para cada faixa de áudio, criamos um player de áudio invisível na página */}
+            {audioTracks.map(trackRef => (
+                <AudioTrack key={trackRef.participant.sid} trackRef={trackRef} />
+            ))}
             
             {isHost && <ControlBar />}
         </div>
@@ -46,11 +59,9 @@ const LiveLayout = () => {
 };
 
 const LivePage: React.FC = () => {
-    // 2. Lê o parâmetro "roomName" da URL (ex: "live-123")
     const { roomName } = useParams<{ roomName: string }>(); 
     const navigate = useNavigate();
     const { user } = useAuth();
-    // const { roomName } = useParams<{ roomName: string }>();
     
     const [token, setToken] = useState<string | null>(null);
     const [wsUrl, setWsUrl] = useState<string | null>(null);
@@ -68,14 +79,13 @@ const LivePage: React.FC = () => {
                 } catch (error) {
                     console.error('Erro ao buscar token do LiveKit:', error);
                     alert('Não foi possível conectar à live. Verifique se a live ainda está ativa.');
-                    navigate('/explorar'); // Redireciona de volta para a lista de lives
+                    navigate('/explorar');
                 }
             }
         };
         fetchToken();
     }, [user, navigate, roomName]);
 
-    // O resto do seu código (lógica do chat) permanece exatamente o mesmo
     useEffect(() => {
         if (user && roomName) {
             const newSocket = io(import.meta.env.VITE_API_URL || 'http://localhost:3333');
