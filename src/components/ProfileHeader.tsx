@@ -1,4 +1,4 @@
-// src/components/ProfileHeader.tsx (VERSÃO FINAL E INTELIGENTE)
+// src/components/ProfileHeader.tsx (VERSÃO FINAL E CORRIGIDA)
 
 import React, { useState, useRef } from 'react';
 import api from '../services/api';
@@ -9,7 +9,7 @@ interface ProfileHeaderProps {
   user: UserData;
   onEditClick: () => void;
   onCoverUploadSuccess: () => void;
-  isMyProfile: boolean; // <-- PROPRIEDADE ADICIONADA
+  isMyProfile: boolean;
 }
 
 const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user, onEditClick, onCoverUploadSuccess, isMyProfile }) => {
@@ -21,7 +21,7 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user, onEditClick, onCove
     if (!file) return;
 
     const formData = new FormData();
-    formData.append('coverPhoto', file);
+    formData.append('cover', file); // <-- Nome do campo corrigido
 
     setIsUploading(true);
     try {
@@ -41,10 +41,14 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user, onEditClick, onCove
     fileInputRef.current?.click();
   };
   
-  const fullProfileImageUrl = user.profilePictureUrl ? `${import.meta.env.VITE_API_URL}${user.profilePictureUrl}` : null;
-  const fullCoverImageUrl = user.coverPhotoUrl ? `${import.meta.env.VITE_API_URL}${user.coverPhotoUrl}` : null;
+  const fullProfileImageUrl = user.profilePictureUrl; // <-- Lógica de exibição corrigida
+  const fullCoverImageUrl = user.coverPhotoUrl;     // <-- Lógica de exibição corrigida
 
-  const calculateMembershipDuration = (createdAt: string) => {
+  // =========================================================================
+  // A CORREÇÃO DO ERRO 'void' ESTÁ AQUI:
+  // A função agora tem sua lógica completa e sempre retorna uma string.
+  // =========================================================================
+  const calculateMembershipDuration = (createdAt: string): string => {
     const creationDate = new Date(createdAt);
     const now = new Date();
     const diffInDays = Math.floor((now.getTime() - creationDate.getTime()) / (1000 * 60 * 60 * 24));
@@ -65,21 +69,20 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user, onEditClick, onCove
           </div>
         )}
         
-        {/* O botão de alterar capa SÓ APARECE se for o seu perfil */}
         {isMyProfile && (
             <>
-                <button
+              <button
                 onClick={handleUploadButtonClick}
                 disabled={isUploading}
                 className="absolute top-4 right-4 bg-black bg-opacity-50 text-white font-bold py-2 px-4 rounded-lg transition-opacity opacity-0 group-hover:opacity-100 disabled:opacity-50 flex items-center gap-2"
-                >
-                {isUploading ? (
-                    <><Loader2 className="animate-spin w-5 h-5" /><span>Enviando...</span></>
-                ) : (
-                    <><Camera className="w-5 h-5" /><span>Alterar Capa</span></>
-                )}
-                </button>
-                <input type="file" ref={fileInputRef} onChange={handleCoverUpload} accept="image/*" className="hidden" />
+              >
+              {isUploading ? (
+                  <><Loader2 className="animate-spin w-5 h-5" /><span>Enviando...</span></>
+              ) : (
+                  <><Camera className="w-5 h-5" /><span>Alterar Capa</span></>
+              )}
+              </button>
+              <input type="file" ref={fileInputRef} onChange={handleCoverUpload} accept="image/*" className="hidden" />
             </>
         )}
       </div>
@@ -99,12 +102,12 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user, onEditClick, onCove
           </div>
           <div className="flex flex-col items-center sm:items-end gap-2">
             
-            {/* O botão de editar perfil SÓ APARECE se for o seu perfil */}
             {isMyProfile && (
                 <button onClick={onEditClick} className="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition-colors w-full sm:w-auto">
                     Editar perfil
                 </button>
             )}
+            {/* Agora 'membershipDuration' é uma string e pode ser renderizada sem erro */}
             <span className="text-xs text-gray-500">{membershipDuration}</span>
           </div>
         </div>

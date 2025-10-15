@@ -24,7 +24,7 @@ const Header: React.FC = () => {
   //    Não precisamos mais dela, pois vamos usar a função centralizada do AuthProvider.
 
   const avatarUrl = user?.profilePictureUrl
-    ? `${import.meta.env.VITE_API_URL}${user.profilePictureUrl}`
+    ? `<img src={user.profilePictureUrl} />`
     : undefined;
 
   return (

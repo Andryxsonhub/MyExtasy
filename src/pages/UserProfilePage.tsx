@@ -138,7 +138,7 @@ const UserProfilePage: React.FC = () => {
                   {isMyProfile && activeTab === 'posts' && <CreatePost userProfilePicture={profileData.profilePictureUrl} onPostCreated={fetchData} />}
                   {activeTab === 'posts' && <div className={isMyProfile ? "mt-8" : ""}><PostList posts={posts} /></div>}
                   {activeTab === 'about' && <AboutTabContent user={profileData} />}
-                  {activeTab === 'photos' && <PhotosTabContent photos={photos} onAddPhotoClick={isMyProfile ? openUploadPhotoModal : () => {}} isMyProfile={isMyProfile} />}
+                  {activeTab === 'photos' && <PhotosTabContent photos={photos} onAddPhotoClick={isMyProfile ? openUploadPhotoModal : () => {}} isMyProfile={isMyProfile} onDeleteSuccess={fetchData} />}
                   {activeTab === 'videos' && <VideosTabContent videos={videos} onAddVideoClick={isMyProfile ? openUploadVideoModal : () => {}} isMyProfile={isMyProfile} />}
                 </div>
               </div>
