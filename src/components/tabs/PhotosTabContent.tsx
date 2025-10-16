@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Trash2 } from 'lucide-react';
 import type { Photo } from '../../types/types';
-import Lightbox from "yet-another-react-lightbox";
-import "yet-another-react-lightbox/styles.css";
 import api from '@/services/api';
+
+import FsLightbox from 'fslightbox-react';
 
 interface PhotosTabContentProps {
     photos: Photo[];
@@ -15,28 +15,27 @@ interface PhotosTabContentProps {
 
 const PhotosTabContent: React.FC<PhotosTabContentProps> = ({ photos, onAddPhotoClick, isMyProfile, onDeleteSuccess }) => {
     
-    const [open, setOpen] = useState(false);
-    const [index, setIndex] = useState(0);
-
-    const slides = photos.map(photo => {
-        if (photo.url.startsWith('http')) {
-            return { src: photo.url };
-        }
-        const parts = photo.url.split('/');
-        if (parts.length === 4) {
-            const folder = parts[2];
-            const filename = parts[3];
-            return { src: `/media?folder=${folder}&file=${filename}` };
-        }
-        return { src: photo.url };
+    const [lightboxController, setLightboxController] = useState({
+        toggler: false,
+        slide: 1
     });
 
+    function openLightboxOnSlide(number: number) {
+        setLightboxController({
+            toggler: !lightboxController.toggler,
+            slide: number
+        });
+    }
+
+    // ==========================================================
+    // A CORREÇÃO DO ERRO "Expression expected" ESTÁ AQUI:
+    // A lógica da função foi restaurada.
+    // ==========================================================
     const handleDeletePhoto = async (photoId: number) => {
         if (!window.confirm('Tem certeza que deseja apagar esta foto? Esta ação não pode ser desfeita.')) {
             return;
         }
         try {
-            // A chamada à API agora usará o ID numérico correto, ex: /users/photos/7
             await api.delete(`/users/photos/${photoId}`);
             alert('Foto apagada com sucesso!');
             onDeleteSuccess();
@@ -45,6 +44,8 @@ const PhotosTabContent: React.FC<PhotosTabContentProps> = ({ photos, onAddPhotoC
             alert('Não foi possível apagar a foto. Tente novamente.');
         }
     };
+
+    const photoUrls = photos.map(photo => photo.url);
 
     return (
         <div>
@@ -60,26 +61,16 @@ const PhotosTabContent: React.FC<PhotosTabContentProps> = ({ photos, onAddPhotoC
             {photos.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                     {photos.map((photo, i) => (
-                        <div key={photo.id} className="relative aspect-square bg-gray-800 rounded-lg overflow-hidden group">
+                        <div key={photo.id} className="relative aspect-square bg-gray-800 rounded-lg overflow-hidden group cursor-pointer">
                             <img 
-                                src={slides[i].src}
-                                alt={photo.description || 'Foto do usuário'}
-                                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110 cursor-pointer"
-                                onClick={() => {
-                                    setIndex(i);
-                                    setOpen(true);
-                                }}
+                                src={photo.url} 
+                                alt={photo.description || 'Foto do usuário'} 
+                                className="w-full h-full object-cover" 
+                                onClick={() => openLightboxOnSlide(i + 1)}
                             />
                             {isMyProfile && (
                                 <button
-                                    // =================================================================
-                                    // AQUI ESTÁ A GARANTIA DA CORREÇÃO DO ERRO 404:
-                                    // Passamos 'photo.id', que é um número limpo, para a função.
-                                    // =================================================================
-                                    onClick={(e) => {
-                                        e.stopPropagation(); 
-                                        handleDeletePhoto(photo.id);
-                                    }}
+                                    onClick={(e) => { e.stopPropagation(); handleDeletePhoto(photo.id); }}
                                     className="absolute top-2 right-2 p-2 bg-black bg-opacity-50 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:bg-red-600"
                                     aria-label="Apagar foto"
                                 >
@@ -95,11 +86,10 @@ const PhotosTabContent: React.FC<PhotosTabContentProps> = ({ photos, onAddPhotoC
                 </div>
             )}
 
-            <Lightbox
-                open={open}
-                close={() => setOpen(false)}
-                slides={slides}
-                index={index}
+            <FsLightbox
+                toggler={lightboxController.toggler}
+                sources={photoUrls}
+                slide={lightboxController.slide}
             />
         </div>
     );
