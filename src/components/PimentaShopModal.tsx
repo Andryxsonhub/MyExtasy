@@ -1,8 +1,12 @@
-// VERSÃO SIMPLIFICADA - Removida a opção de Débito
+// PimentaShopModal.tsx — PIX via qr_codes + Cartão (sem débito) + coleta de CPF/CNPJ para PROD
+// (versão completa e tipada, sem "any" no uso do user)
 
+// ---------------------------------
+// Imports
+// ---------------------------------
 import React, { useState, useEffect } from 'react';
 import api from '@/services/api';
-import { toast } from "sonner";
+import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthProvider';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -13,7 +17,9 @@ import usePagSeguroScript from '@/hooks/usePagSeguroScript';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 declare const PagSeguro: any;
 
-// --- INTERFACES ---
+// ---------------------------------
+// Types
+// ---------------------------------
 interface PimentaPackage {
   id: number;
   name: string;
@@ -28,39 +34,68 @@ interface PaymentFormData {
   holderName: string;
   holderDocument: string;
   cardNumber: string;
-  expiry: string;
+  expiry: string; // MM/AA
   cvv: string;
 }
 interface PaymentFormProps {
   selectedPackage: PimentaPackage;
-  onSubmit: (cardData: PaymentFormData, paymentType: 'credit' | 'debit') => void;
+  onSubmit: (cardData: PaymentFormData) => void;
   onBack: () => void;
   isProcessing: boolean;
   error: string | null;
   isScriptReady: boolean;
 }
 interface PagBankLink {
-  rel: string;
+  rel?: string;
   href: string;
-  media: string;
-  type: string;
+  media?: string;
+  type?: string;
+}
+interface PagBankQr {
+  id?: string;
+  text?: string;
+  emv?: string;
+  qr_code?: string;
+  links?: PagBankLink[];
+  expiration_date?: string;
+  expires_at?: string;
 }
 
+// ---------------------------------
+// Helpers
+// ---------------------------------
 const formatPrice = (priceInCents: number) => {
   const priceInReais = priceInCents / 100;
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(priceInReais);
 };
 
+// Helper seguro para extrair CPF/CNPJ do user sem usar "any"
+function extractTaxId(u: unknown): string | null {
+  if (!u || typeof u !== 'object') return null;
+  const obj = u as Record<string, unknown>;
+  if (typeof obj.cpf === 'string') return obj.cpf.replace(/\D/g, '');
+  if (typeof obj.taxId === 'string') return obj.taxId.replace(/\D/g, '');
+  if (typeof obj.tax_id === 'string') return obj.tax_id.replace(/\D/g, '');
+  return null;
+}
+
+// ---------------------------------
+// Component
+// ---------------------------------
 const PimentaShopModal: React.FC<PimentaShopModalProps> = ({ isOpen, onClose }) => {
   const scriptStatus = usePagSeguroScript();
   const [packages, setPackages] = useState<PimentaPackage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedPackage, setSelectedPackage] = useState<PimentaPackage | null>(null);
   const { user, setUser } = useAuth();
-  const [step, setStep] = useState<'select_package' | 'select_method' | 'show_credit_card_form' | 'show_debit_card_form' | 'show_pix_qr'>('select_package');
+
+  type Step = 'select_package' | 'select_method' | 'show_card_form' | 'show_pix_qr';
+  const [step, setStep] = useState<Step>('select_package');
+
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
-  const [qrCodeData, setQrCodeData] = useState<{ text: string; link: string } | null>(null);
+
+  const [qrCodeData, setQrCodeData] = useState<{ text?: string; link?: string; expiresAt?: string } | null>(null);
 
   const resetModalState = () => {
     setIsLoading(true);
@@ -81,8 +116,8 @@ const PimentaShopModal: React.FC<PimentaShopModalProps> = ({ isOpen, onClose }) 
         const response = await api.get('/payments/packages');
         setPackages(response.data);
       } catch (error) {
-        console.error("Erro ao buscar pacotes:", error);
-        toast.error("Erro ao carregar pacotes", { description: "Não foi possível buscar os pacotes. Tente novamente." });
+        console.error('Erro ao buscar pacotes:', error);
+        toast.error('Erro ao carregar pacotes', { description: 'Não foi possível buscar os pacotes. Tente novamente.' });
       } finally {
         setIsLoading(false);
       }
@@ -95,36 +130,69 @@ const PimentaShopModal: React.FC<PimentaShopModalProps> = ({ isOpen, onClose }) 
     setStep('select_method');
   };
 
+  // =========================
+  // PIX (coleta CPF/CNPJ se necessário)
+  // =========================
   const handlePayWithPix = async () => {
-    // ... (código do PIX permanece inalterado)
     if (!selectedPackage) return;
     setIsProcessing(true);
     try {
-      const response = await api.post('/payments/create-pix-order', { packageId: selectedPackage.id });
-      const qrCode = response.data.qr_codes[0];
-      const imageLink = qrCode.links.find((link: PagBankLink) => link.media === 'image/png');
-      if (imageLink) {
-        setQrCodeData({ text: qrCode.text, link: imageLink.href });
-        setStep('show_pix_qr');
-      } else {
-        throw new Error("Link da imagem do QR Code não encontrado.");
+      // tenta pegar do usuário
+      let taxId = extractTaxId(user) ?? '';
+
+      // se não tiver, pergunta
+      if (!(taxId.length === 11 || taxId.length === 14)) {
+        const input = window.prompt('Informe seu CPF (somente números) para concluir o pagamento PIX:');
+        const digits = (input || '').replace(/\D/g, '');
+        if (!(digits.length === 11 || digits.length === 14)) {
+          toast.error('CPF inválido. Tente novamente.');
+          setIsProcessing(false);
+          return;
+        }
+        taxId = digits;
       }
+
+      const { data } = await api.post('/payments/checkout', {
+        packageId: selectedPackage.id,
+        method: 'PIX',
+        customerTaxId: taxId, // <- backend exige em PROD
+      });
+
+      const qr: PagBankQr | undefined = data?.qr_codes?.[0];
+      if (!qr) throw new Error('QR Code não retornado pelo provedor.');
+
+      const emvText = qr.text || qr.emv || qr.qr_code || '';
+      const qrImg = qr.links?.find((l) =>
+        /qrcode|image|png/i.test(`${l.rel ?? ''}${l.media ?? ''}${l.type ?? ''}`)
+      )?.href;
+
+      if (!emvText && !qrImg) throw new Error('Conteúdo do QR indisponível.');
+
+      setQrCodeData({
+        text: emvText || undefined,
+        link: qrImg || undefined,
+        expiresAt: qr.expiration_date || qr.expires_at,
+      });
+      setStep('show_pix_qr');
     } catch (error) {
-      console.error("Erro ao criar ordem Pix:", error);
-      toast.error("Não foi possível gerar a cobrança Pix.");
+      console.error('Erro ao criar ordem Pix:', error);
+      toast.error('Não foi possível gerar a cobrança Pix.');
     } finally {
       setIsProcessing(false);
     }
   };
 
+  // =========================
+  // CARTÃO
+  // =========================
   const handleSubmitCardPayment = async (cardData: PaymentFormData) => {
     if (!selectedPackage || scriptStatus !== 'ready') {
-      setPaymentError("Serviço de pagamento indisponível. Tente novamente em instantes.");
+      setPaymentError('Serviço de pagamento indisponível. Tente novamente em instantes.');
       return;
     }
     setIsProcessing(true);
     setPaymentError(null);
-    
+
     const card = {
       publicKey: import.meta.env.VITE_PAGBANK_PUBLIC_KEY,
       holder: cardData.holderName,
@@ -134,90 +202,145 @@ const PimentaShopModal: React.FC<PimentaShopModalProps> = ({ isOpen, onClose }) 
       securityCode: cardData.cvv,
     };
 
-
     const result = PagSeguro.encryptCard(card);
-
     if (result.hasErrors) {
       const errorCode = result.errors[0].code;
       const errorMessage = `Erro nos dados do cartão (código: ${errorCode}). Verifique e tente novamente.`;
       setPaymentError(errorMessage);
-      toast.error("Erro de Validação", { description: errorMessage });
+      toast.error('Erro de Validação', { description: errorMessage });
       setIsProcessing(false);
       return;
     }
 
-
     const encryptedCard = result.encryptedCard;
 
     try {
-      const response = await api.post('/payments/process-card', {
+      const response = await api.post('/payments/checkout', {
         packageId: selectedPackage.id,
-        encryptedCard: encryptedCard,
-        holderName: cardData.holderName,
-        holderDocument: cardData.holderDocument.replace(/\D/g, ''),
+        method: 'CREDIT_CARD',
+        customerTaxId: cardData.holderDocument.replace(/\D/g, ''),
+        card: {
+          encryptedCard,
+          holderName: cardData.holderName,
+        },
       });
 
-      toast.success('Compra realizada!', { description: 'Suas pimentas foram adicionadas com sucesso.' });
-      if (user) {
+      toast.success('Compra realizada!', { description: 'Pagamento aprovado.' });
+      if (user && response.data?.newPimentaBalance !== undefined) {
         setUser({ ...user, pimentaBalance: response.data.newPimentaBalance });
       }
       onClose();
-
     } catch (error) {
       let errorMessage = 'Não foi possível processar seu pagamento.';
       if (typeof error === 'object' && error !== null && 'response' in error) {
         const responseError = error as { response?: { data?: { message?: string } } };
-        if (responseError.response?.data?.message) { errorMessage = responseError.response.data.message; }
+        if (responseError.response?.data?.message) errorMessage = responseError.response.data.message;
       }
       setPaymentError(errorMessage);
       toast.error('Ops! Algo deu errado.', { description: errorMessage });
     } finally {
-      if (paymentType === 'credit') {
-        setIsProcessing(false);
-      }
+      setIsProcessing(false);
     }
   };
 
   const renderContent = () => {
     switch (step) {
-      case 'select_method':
+      case 'select_method': {
         if (!selectedPackage) return null;
         return (
           <div>
             <div className="text-center mb-8">
               <h2 className="text-3xl font-bold text-primary">Escolha como pagar</h2>
-              <p className="text-lg text-muted-foreground mt-2">Você está comprando: <span className="font-bold text-foreground">{selectedPackage.name}</span></p>
+              <p className="text-lg text-muted-foreground mt-2">
+                Você está comprando: <span className="font-bold text-foreground">{selectedPackage.name}</span>
+              </p>
               <p className="text-2xl font-bold text-foreground">{formatPrice(selectedPackage.priceInCents)}</p>
             </div>
             <div className="max-w-md mx-auto space-y-4">
-              <Button onClick={handlePayWithPix} size="lg" className="w-full" disabled={isProcessing}>{isProcessing ? <Loader2 className="animate-spin" /> : <><QrCode className="mr-2 h-5 w-5"/> Pagar com PIX</>}</Button>
-              <Button onClick={() => setStep('show_card_form')} size="lg" className="w-full" variant="outline" disabled={scriptStatus !== 'ready'}>
-                {scriptStatus === 'loading' && <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Carregando...</>}
-                {scriptStatus === 'ready' && <><CreditCard className="mr-2 h-5 w-5"/> Pagar com Cartão</>}
-                {scriptStatus === 'error' && <><AlertTriangle className="mr-2 h-5 w-5 text-red-500"/> Erro no Serviço</>}
+              <Button onClick={handlePayWithPix} size="lg" className="w-full" disabled={isProcessing}>
+                {isProcessing ? <Loader2 className="animate-spin" /> : (<><QrCode className="mr-2 h-5 w-5" /> Pagar com PIX</>)}
               </Button>
+
+              <Button
+                onClick={() => setStep('show_card_form')}
+                size="lg"
+                className="w-full"
+                variant="outline"
+                disabled={scriptStatus !== 'ready'}
+              >
+                {scriptStatus === 'loading' && (<><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Carregando...</>)}
+                {scriptStatus === 'ready' && (<><CreditCard className="mr-2 h-5 w-5" /> Pagar com Cartão</>)}
+                {scriptStatus === 'error' && (<><AlertTriangle className="mr-2 h-5 w-5 text-red-500" /> Erro no Serviço</>)}
+              </Button>
+
               <Button onClick={() => setStep('select_package')} variant="ghost" className="w-full">Voltar</Button>
             </div>
           </div>
         );
-      case 'show_pix_qr':
+      }
+
+      case 'show_pix_qr': {
         if (!qrCodeData) return null;
+        const emv = qrCodeData.text;
+        const imgLink = qrCodeData.link;
         return (
           <div className="flex flex-col items-center">
             <h2 className="text-2xl font-bold mb-4 text-center">Pague com Pix</h2>
             <p className="text-gray-400 mb-6 text-center">Escaneie o QR Code abaixo com o app do seu banco.</p>
-            <div className="bg-white p-4 rounded-lg inline-block"><QRCodeSVG value={qrCodeData.text} size={256} /></div>
-            <div className="bg-gray-800 p-2 rounded-lg flex items-center mt-4 w-full max-w-sm">
-              <p className="text-xs text-gray-300 break-all truncate mr-2">{qrCodeData.text}</p>
-              <Button variant="ghost" size="icon" onClick={() => { navigator.clipboard.writeText(qrCodeData.text); toast.success("Código Pix copiado!"); }}>
-                <Copy className="h-5 w-5" />
-              </Button>
-            </div>
-            <Button onClick={() => setStep('select_method')} variant="ghost" className="w-full max-w-sm mt-6">Voltar</Button>
+
+            {emv ? (
+              <div className="bg-white p-4 rounded-lg inline-block">
+                <QRCodeSVG value={emv} size={256} />
+              </div>
+            ) : (
+              imgLink && (
+                <div className="bg-white p-4 rounded-lg inline-block">
+                  <img src={imgLink} alt="QR Code PIX" width={256} height={256} />
+                </div>
+              )
+            )}
+
+            {emv && (
+              <div className="bg-gray-800 p-2 rounded-lg flex items-center mt-4 w-full max-w-sm">
+                <p className="text-xs text-gray-300 break-all truncate mr-2">{emv}</p>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    navigator.clipboard.writeText(emv);
+                    toast.success('Código Pix copiado!');
+                  }}
+                >
+                  <Copy className="h-5 w-5" />
+                </Button>
+              </div>
+            )}
+
+            {qrCodeData.expiresAt && (
+              <p className="text-xs text-muted-foreground mt-2">
+                Expira em: {new Date(qrCodeData.expiresAt).toLocaleString()}
+              </p>
+            )}
+
+            <Button onClick={() => setStep('select_method')} variant="ghost" className="w-full max-w-sm mt-6">
+              Voltar
+            </Button>
           </div>
         );
+      }
+
       case 'show_card_form':
-        return <PaymentForm selectedPackage={selectedPackage!} onSubmit={handleSubmitCardPayment} onBack={() => setStep('select_method')} isProcessing={isProcessing} error={paymentError} isScriptReady={scriptStatus === 'ready'} />;
+        return (
+          <PaymentForm
+            selectedPackage={selectedPackage!}
+            onSubmit={handleSubmitCardPayment}
+            onBack={() => setStep('select_method')}
+            isProcessing={isProcessing}
+            error={paymentError}
+            isScriptReady={scriptStatus === 'ready'}
+          />
+        );
+
       default:
         return (
           <div>
@@ -225,15 +348,32 @@ const PimentaShopModal: React.FC<PimentaShopModalProps> = ({ isOpen, onClose }) 
               <h2 className="text-4xl font-bold text-primary">Muito mais prazer!</h2>
               <p className="text-lg text-muted-foreground mt-2">Impulsione seu perfil ou destaque suas mensagens</p>
             </div>
-            {isLoading ? (<div className="text-center p-10 flex justify-center items-center"><Loader2 className="animate-spin h-10 w-10"/></div>) : (
+            {isLoading ? (
+              <div className="text-center p-10 flex justify-center items-center">
+                <Loader2 className="animate-spin h-10 w-10" />
+              </div>
+            ) : (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {packages.map((pkg, index) => (
-                  <div key={pkg.id} className={`rounded-lg p-6 flex flex-col items-center shadow-lg bg-background relative ${index === 1 ? 'border-2 border-primary' : 'border border-border'}`}>
-                    {index === 1 && <span className="absolute -top-4 bg-primary text-primary-foreground px-4 py-1 rounded-full text-sm font-bold">MAIS POPULAR</span>}
+                  <div
+                    key={pkg.id}
+                    className={`rounded-lg p-6 flex flex-col items-center shadow-lg bg-background relative ${
+                      index === 1 ? 'border-2 border-primary' : 'border border-border'
+                    }`}
+                  >
+                    {index === 1 && (
+                      <span className="absolute -top-4 bg-primary text-primary-foreground px-4 py-1 rounded-full text-sm font-bold">
+                        MAIS POPULAR
+                      </span>
+                    )}
                     <p className="text-2xl font-bold">{pkg.pimentaAmount.toLocaleString('pt-BR')} 🌶️</p>
                     <p className="text-lg font-semibold text-foreground">Pimentas</p>
-                    <p className={`text-4xl font-extrabold my-2 ${index === 1 ? 'text-primary' : 'text-foreground'}`}>{formatPrice(pkg.priceInCents)}</p>
-                    <Button onClick={() => handleSelectPackage(pkg)} size="lg" className="bg-green-800 hover:bg-green-700 w-full mt-4">Comprar pacote</Button>
+                    <p className={`text-4xl font-extrabold my-2 ${index === 1 ? 'text-primary' : 'text-foreground'}`}>
+                      {formatPrice(pkg.priceInCents)}
+                    </p>
+                    <Button onClick={() => handleSelectPackage(pkg)} size="lg" className="bg-green-800 hover:bg-green-700 w-full mt-4">
+                      Comprar pacote
+                    </Button>
                   </div>
                 ))}
               </div>
@@ -257,27 +397,46 @@ const PimentaShopModal: React.FC<PimentaShopModalProps> = ({ isOpen, onClose }) 
   );
 };
 
-const PaymentForm: React.FC<PaymentFormProps> = ({ selectedPackage, onSubmit, onBack, isProcessing, error, isScriptReady }) => {
-  const [formData, setFormData] = useState<PaymentFormData>({ holderName: '', holderDocument: '', cardNumber: '', expiry: '', cvv: '' });
+// ---------------------------------
+// Sub-component: PaymentForm
+// ---------------------------------
+const PaymentForm: React.FC<PaymentFormProps> = ({
+  selectedPackage,
+  onSubmit,
+  onBack,
+  isProcessing,
+  error,
+  isScriptReady,
+}) => {
+  const [formData, setFormData] = useState<PaymentFormData>({
+    holderName: '',
+    holderDocument: '',
+    cardNumber: '',
+    expiry: '',
+    cvv: '',
+  });
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => { const { name, value } = e.target; setFormData(prev => ({ ...prev, [name]: value })); };
-  
-  const handleSubmit = (e: React.FormEvent) => { 
-    e.preventDefault(); 
-    onSubmit(formData); 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit(formData);
   };
 
   return (
     <div>
       <div className="text-center mb-6">
-        {/* Título alterado para ser genérico */}
         <h2 className="text-3xl font-bold text-primary">Pagamento com Cartão</h2>
-        <p className="text-lg text-muted-foreground mt-2">Você está comprando: <span className="font-bold text-foreground">{selectedPackage.name}</span></p>
+        <p className="text-lg text-muted-foreground mt-2">
+          Você está comprando: <span className="font-bold text-foreground">{selectedPackage.name}</span>
+        </p>
         <p className="text-2xl font-bold text-foreground">{formatPrice(selectedPackage.priceInCents)}</p>
       </div>
 
       <form onSubmit={handleSubmit} className="max-w-md mx-auto space-y-4">
-        {/* Botões de Crédito/Débito REMOVIDOS */}
         <Input name="holderName" placeholder="Nome do Titular (como no cartão)" value={formData.holderName} onChange={handleInputChange} required />
         <Input name="holderDocument" placeholder="CPF do Titular" value={formData.holderDocument} onChange={handleInputChange} required />
         <Input name="cardNumber" placeholder="Número do Cartão" value={formData.cardNumber} onChange={handleInputChange} required />
@@ -285,13 +444,22 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ selectedPackage, onSubmit, on
           <Input name="expiry" placeholder="Validade (MM/AA)" className="w-1/2" value={formData.expiry} onChange={handleInputChange} required />
           <Input name="cvv" placeholder="CVV" className="w-1/2" value={formData.cvv} onChange={handleInputChange} required />
         </div>
-        
+
         {error && <p className="text-red-500 text-sm text-center">{error}</p>}
 
         <div className="flex flex-col sm:flex-row gap-4 pt-4">
-          <Button type="button" onClick={onBack} variant="outline" className="w-full" disabled={isProcessing}>Voltar</Button>
+          <Button type="button" onClick={onBack} variant="outline" className="w-full" disabled={isProcessing}>
+            Voltar
+          </Button>
           <Button type="submit" className="w-full" disabled={!isScriptReady || isProcessing}>
-            {!isScriptReady ? <><Loader2 className="animate-spin mr-2" />Aguarde...</> : `Pagar ${formatPrice(selectedPackage.priceInCents)}`}
+            {!isScriptReady ? (
+              <>
+                <Loader2 className="animate-spin mr-2" />
+                Aguarde...
+              </>
+            ) : (
+              `Pagar ${formatPrice(selectedPackage.priceInCents)}`
+            )}
           </Button>
         </div>
       </form>
