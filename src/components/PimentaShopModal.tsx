@@ -1,10 +1,7 @@
-// PimentaShopModal.tsx — PIX via qr_codes + Cartão (sem débito) + coleta de CPF/CNPJ para PROD
-// (versão completa e tipada, sem "any" no uso do user)
+// src/components/PimentaShopModal.tsx
+// VERSÃO FINAL — PIX via qr_codes + Cartão de Crédito (PagBank)
 
-// ---------------------------------
-// Imports
-// ---------------------------------
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import api from '@/services/api';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthProvider';
@@ -14,12 +11,13 @@ import { Loader2, X, Copy, CreditCard, QrCode, AlertTriangle } from 'lucide-reac
 import { QRCodeSVG } from 'qrcode.react';
 import usePagSeguroScript from '@/hooks/usePagSeguroScript';
 
+// A lib do PagBank injeta um global. Mantemos como any para não brigar com o TS.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 declare const PagSeguro: any;
 
-// ---------------------------------
-// Types
-// ---------------------------------
+/* =========================
+   Tipagens
+========================= */
 interface PimentaPackage {
   id: number;
   name: string;
@@ -32,7 +30,7 @@ interface PimentaShopModalProps {
 }
 interface PaymentFormData {
   holderName: string;
-  holderDocument: string;
+  holderDocument: string; // CPF/CNPJ do titular
   cardNumber: string;
   expiry: string; // MM/AA
   cvv: string;
@@ -61,41 +59,36 @@ interface PagBankQr {
   expires_at?: string;
 }
 
-// ---------------------------------
-// Helpers
-// ---------------------------------
-const formatPrice = (priceInCents: number) => {
-  const priceInReais = priceInCents / 100;
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(priceInReais);
-};
+/* =========================
+   Helpers
+========================= */
+const formatPrice = (priceInCents: number) =>
+  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+    priceInCents / 100
+  );
 
-// Helper seguro para extrair CPF/CNPJ do user sem usar "any"
-function extractTaxId(u: unknown): string | null {
-  if (!u || typeof u !== 'object') return null;
-  const obj = u as Record<string, unknown>;
-  if (typeof obj.cpf === 'string') return obj.cpf.replace(/\D/g, '');
-  if (typeof obj.taxId === 'string') return obj.taxId.replace(/\D/g, '');
-  if (typeof obj.tax_id === 'string') return obj.tax_id.replace(/\D/g, '');
-  return null;
-}
+type Step = 'select_package' | 'select_method' | 'show_card_form' | 'show_pix_qr';
 
-// ---------------------------------
-// Component
-// ---------------------------------
+/* =========================
+   Componente principal
+========================= */
 const PimentaShopModal: React.FC<PimentaShopModalProps> = ({ isOpen, onClose }) => {
-  const scriptStatus = usePagSeguroScript();
+  const scriptStatus = usePagSeguroScript(); // 'loading' | 'ready' | 'error'
+  const { user, setUser } = useAuth();
+
   const [packages, setPackages] = useState<PimentaPackage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedPackage, setSelectedPackage] = useState<PimentaPackage | null>(null);
-  const { user, setUser } = useAuth();
 
-  type Step = 'select_package' | 'select_method' | 'show_card_form' | 'show_pix_qr';
   const [step, setStep] = useState<Step>('select_package');
-
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
 
-  const [qrCodeData, setQrCodeData] = useState<{ text?: string; link?: string; expiresAt?: string } | null>(null);
+  const [qrCodeData, setQrCodeData] = useState<{
+    text?: string;
+    link?: string;
+    expiresAt?: string;
+  } | null>(null);
 
   const resetModalState = () => {
     setIsLoading(true);
@@ -113,11 +106,14 @@ const PimentaShopModal: React.FC<PimentaShopModalProps> = ({ isOpen, onClose }) 
     const fetchPackages = async () => {
       setIsLoading(true);
       try {
-        const response = await api.get('/payments/packages');
-        setPackages(response.data);
-      } catch (error) {
-        console.error('Erro ao buscar pacotes:', error);
-        toast.error('Erro ao carregar pacotes', { description: 'Não foi possível buscar os pacotes. Tente novamente.' });
+        // nossa API já tem baseURL com /api — aqui usamos caminho relativo de payments
+        const { data } = await api.get('/payments/packages');
+        setPackages(data);
+      } catch (err) {
+        console.error('Erro ao buscar pacotes:', err);
+        toast.error('Erro ao carregar pacotes', {
+          description: 'Não foi possível buscar os pacotes. Tente novamente.',
+        });
       } finally {
         setIsLoading(false);
       }
@@ -130,43 +126,47 @@ const PimentaShopModal: React.FC<PimentaShopModalProps> = ({ isOpen, onClose }) 
     setStep('select_method');
   };
 
-  // =========================
-  // PIX (coleta CPF/CNPJ se necessário)
-  // =========================
+  /* =========================
+     PIX
+  ========================= */
   const handlePayWithPix = async () => {
     if (!selectedPackage) return;
     setIsProcessing(true);
+    setPaymentError(null);
+
+    // em produção, PagBank exige CPF/CNPJ do pagador
+    const taxFromUser =
+      (user as unknown as { cpf?: string; taxId?: string })?.cpf ||
+      (user as unknown as { taxId?: string })?.taxId ||
+      '';
+    const customerTaxId = String(taxFromUser || '').replace(/\D/g, '') || undefined;
+
     try {
-      // tenta pegar do usuário
-      let taxId = extractTaxId(user) ?? '';
-
-      // se não tiver, pergunta
-      if (!(taxId.length === 11 || taxId.length === 14)) {
-        const input = window.prompt('Informe seu CPF (somente números) para concluir o pagamento PIX:');
-        const digits = (input || '').replace(/\D/g, '');
-        if (!(digits.length === 11 || digits.length === 14)) {
-          toast.error('CPF inválido. Tente novamente.');
-          setIsProcessing(false);
-          return;
-        }
-        taxId = digits;
-      }
-
       const { data } = await api.post('/payments/checkout', {
         packageId: selectedPackage.id,
         method: 'PIX',
-        customerTaxId: taxId, // <- backend exige em PROD
+        customerTaxId, // se vier vazio no dev não tem problema; em prod é obrigatório
       });
 
-      const qr: PagBankQr | undefined = data?.qr_codes?.[0];
-      if (!qr) throw new Error('QR Code não retornado pelo provedor.');
+      // A resposta do backend é a própria resposta /orders do PagBank
+      // Procuramos o primeiro QR:
+      const qr: PagBankQr | undefined =
+        data?.qr_codes?.[0] ||
+        data?.order?.qr_codes?.[0] ||
+        data?.data?.order?.qr_codes?.[0];
+
+      if (!qr) {
+        throw new Error('QR Code não retornado pelo provedor.');
+      }
 
       const emvText = qr.text || qr.emv || qr.qr_code || '';
       const qrImg = qr.links?.find((l) =>
         /qrcode|image|png/i.test(`${l.rel ?? ''}${l.media ?? ''}${l.type ?? ''}`)
       )?.href;
 
-      if (!emvText && !qrImg) throw new Error('Conteúdo do QR indisponível.');
+      if (!emvText && !qrImg) {
+        throw new Error('Não foi possível identificar o conteúdo do QR.');
+      }
 
       setQrCodeData({
         text: emvText || undefined,
@@ -177,14 +177,16 @@ const PimentaShopModal: React.FC<PimentaShopModalProps> = ({ isOpen, onClose }) 
     } catch (error) {
       console.error('Erro ao criar ordem Pix:', error);
       toast.error('Não foi possível gerar a cobrança Pix.');
+      setPaymentError('Ocorreu um erro ao gerar o PIX. Tente novamente.');
+      setStep('select_method');
     } finally {
       setIsProcessing(false);
     }
   };
 
-  // =========================
-  // CARTÃO
-  // =========================
+  /* =========================
+     CRÉDITO
+  ========================= */
   const handleSubmitCardPayment = async (cardData: PaymentFormData) => {
     if (!selectedPackage || scriptStatus !== 'ready') {
       setPaymentError('Serviço de pagamento indisponível. Tente novamente em instantes.');
@@ -193,6 +195,7 @@ const PimentaShopModal: React.FC<PimentaShopModalProps> = ({ isOpen, onClose }) 
     setIsProcessing(true);
     setPaymentError(null);
 
+    // 1) criptografa o cartão com a PUBLIC KEY
     const card = {
       publicKey: import.meta.env.VITE_PAGBANK_PUBLIC_KEY,
       holder: cardData.holderName,
@@ -202,6 +205,7 @@ const PimentaShopModal: React.FC<PimentaShopModalProps> = ({ isOpen, onClose }) 
       securityCode: cardData.cvv,
     };
 
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     const result = PagSeguro.encryptCard(card);
     if (result.hasErrors) {
       const errorCode = result.errors[0].code;
@@ -212,23 +216,29 @@ const PimentaShopModal: React.FC<PimentaShopModalProps> = ({ isOpen, onClose }) 
       return;
     }
 
-    const encryptedCard = result.encryptedCard;
+    const encryptedCard: string = result.encryptedCard;
+    const customerTaxId =
+      cardData.holderDocument?.replace(/\D/g, '') ||
+      (user as unknown as { cpf?: string })?.cpf?.replace(/\D/g, '');
 
     try {
-      const response = await api.post('/payments/checkout', {
+      const { data } = await api.post('/payments/checkout', {
         packageId: selectedPackage.id,
         method: 'CREDIT_CARD',
-        customerTaxId: cardData.holderDocument.replace(/\D/g, ''),
         card: {
           encryptedCard,
           holderName: cardData.holderName,
         },
+        customerTaxId: customerTaxId || undefined,
       });
 
-      toast.success('Compra realizada!', { description: 'Pagamento aprovado.' });
-      if (user && response.data?.newPimentaBalance !== undefined) {
-        setUser({ ...user, pimentaBalance: response.data.newPimentaBalance });
+      toast.success('Pagamento enviado!', { description: 'Aguarde a confirmação.' });
+
+      // se o backend devolver novo saldo imediato (ex.: approved instantly)
+      if (user && typeof data?.newPimentaBalance === 'number') {
+        setUser({ ...user, pimentaBalance: data.newPimentaBalance });
       }
+
       onClose();
     } catch (error) {
       let errorMessage = 'Não foi possível processar seu pagamento.';
@@ -243,9 +253,12 @@ const PimentaShopModal: React.FC<PimentaShopModalProps> = ({ isOpen, onClose }) 
     }
   };
 
+  /* =========================
+     Render
+  ========================= */
   const renderContent = () => {
     switch (step) {
-      case 'select_method': {
+      case 'select_method':
         if (!selectedPackage) return null;
         return (
           <div>
@@ -256,6 +269,7 @@ const PimentaShopModal: React.FC<PimentaShopModalProps> = ({ isOpen, onClose }) 
               </p>
               <p className="text-2xl font-bold text-foreground">{formatPrice(selectedPackage.priceInCents)}</p>
             </div>
+
             <div className="max-w-md mx-auto space-y-4">
               <Button onClick={handlePayWithPix} size="lg" className="w-full" disabled={isProcessing}>
                 {isProcessing ? <Loader2 className="animate-spin" /> : (<><QrCode className="mr-2 h-5 w-5" /> Pagar com PIX</>)}
@@ -273,41 +287,42 @@ const PimentaShopModal: React.FC<PimentaShopModalProps> = ({ isOpen, onClose }) 
                 {scriptStatus === 'error' && (<><AlertTriangle className="mr-2 h-5 w-5 text-red-500" /> Erro no Serviço</>)}
               </Button>
 
-              <Button onClick={() => setStep('select_package')} variant="ghost" className="w-full">Voltar</Button>
+              <Button onClick={() => setStep('select_package')} variant="ghost" className="w-full">
+                Voltar
+              </Button>
             </div>
           </div>
         );
-      }
 
-      case 'show_pix_qr': {
+      case 'show_pix_qr':
         if (!qrCodeData) return null;
-        const emv = qrCodeData.text;
-        const imgLink = qrCodeData.link;
         return (
           <div className="flex flex-col items-center">
             <h2 className="text-2xl font-bold mb-4 text-center">Pague com Pix</h2>
-            <p className="text-gray-400 mb-6 text-center">Escaneie o QR Code abaixo com o app do seu banco.</p>
+            <p className="text-gray-400 mb-6 text-center">
+              Escaneie o QR Code abaixo com o app do seu banco.
+            </p>
 
-            {emv ? (
+            {qrCodeData.text ? (
               <div className="bg-white p-4 rounded-lg inline-block">
-                <QRCodeSVG value={emv} size={256} />
+                <QRCodeSVG value={qrCodeData.text} size={256} />
               </div>
             ) : (
-              imgLink && (
+              qrCodeData.link && (
                 <div className="bg-white p-4 rounded-lg inline-block">
-                  <img src={imgLink} alt="QR Code PIX" width={256} height={256} />
+                  <img src={qrCodeData.link} alt="QR Code PIX" width={256} height={256} />
                 </div>
               )
             )}
 
-            {emv && (
+            {qrCodeData.text && (
               <div className="bg-gray-800 p-2 rounded-lg flex items-center mt-4 w-full max-w-sm">
-                <p className="text-xs text-gray-300 break-all truncate mr-2">{emv}</p>
+                <p className="text-xs text-gray-300 break-all truncate mr-2">{qrCodeData.text}</p>
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={() => {
-                    navigator.clipboard.writeText(emv);
+                    navigator.clipboard.writeText(qrCodeData.text!);
                     toast.success('Código Pix copiado!');
                   }}
                 >
@@ -327,7 +342,6 @@ const PimentaShopModal: React.FC<PimentaShopModalProps> = ({ isOpen, onClose }) 
             </Button>
           </div>
         );
-      }
 
       case 'show_card_form':
         return (
@@ -346,32 +360,39 @@ const PimentaShopModal: React.FC<PimentaShopModalProps> = ({ isOpen, onClose }) 
           <div>
             <div className="text-center mb-8">
               <h2 className="text-4xl font-bold text-primary">Muito mais prazer!</h2>
-              <p className="text-lg text-muted-foreground mt-2">Impulsione seu perfil ou destaque suas mensagens</p>
+              <p className="text-lg text-muted-foreground mt-2">
+                Impulsione seu perfil ou destaque suas mensagens
+              </p>
             </div>
+
             {isLoading ? (
               <div className="text-center p-10 flex justify-center items-center">
                 <Loader2 className="animate-spin h-10 w-10" />
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {packages.map((pkg, index) => (
+                {packages.map((pkg, idx) => (
                   <div
                     key={pkg.id}
                     className={`rounded-lg p-6 flex flex-col items-center shadow-lg bg-background relative ${
-                      index === 1 ? 'border-2 border-primary' : 'border border-border'
+                      idx === 1 ? 'border-2 border-primary' : 'border border-border'
                     }`}
                   >
-                    {index === 1 && (
+                    {idx === 1 && (
                       <span className="absolute -top-4 bg-primary text-primary-foreground px-4 py-1 rounded-full text-sm font-bold">
                         MAIS POPULAR
                       </span>
                     )}
                     <p className="text-2xl font-bold">{pkg.pimentaAmount.toLocaleString('pt-BR')} 🌶️</p>
                     <p className="text-lg font-semibold text-foreground">Pimentas</p>
-                    <p className={`text-4xl font-extrabold my-2 ${index === 1 ? 'text-primary' : 'text-foreground'}`}>
+                    <p className={`text-4xl font-extrabold my-2 ${idx === 1 ? 'text-primary' : 'text-foreground'}`}>
                       {formatPrice(pkg.priceInCents)}
                     </p>
-                    <Button onClick={() => handleSelectPackage(pkg)} size="lg" className="bg-green-800 hover:bg-green-700 w-full mt-4">
+                    <Button
+                      onClick={() => handleSelectPackage(pkg)}
+                      size="lg"
+                      className="bg-green-800 hover:bg-green-700 w-full mt-4"
+                    >
                       Comprar pacote
                     </Button>
                   </div>
@@ -397,9 +418,9 @@ const PimentaShopModal: React.FC<PimentaShopModalProps> = ({ isOpen, onClose }) 
   );
 };
 
-// ---------------------------------
-// Sub-component: PaymentForm
-// ---------------------------------
+/* =========================
+   Formulário de cartão
+========================= */
 const PaymentForm: React.FC<PaymentFormProps> = ({
   selectedPackage,
   onSubmit,
@@ -437,12 +458,44 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
       </div>
 
       <form onSubmit={handleSubmit} className="max-w-md mx-auto space-y-4">
-        <Input name="holderName" placeholder="Nome do Titular (como no cartão)" value={formData.holderName} onChange={handleInputChange} required />
-        <Input name="holderDocument" placeholder="CPF do Titular" value={formData.holderDocument} onChange={handleInputChange} required />
-        <Input name="cardNumber" placeholder="Número do Cartão" value={formData.cardNumber} onChange={handleInputChange} required />
+        <Input
+          name="holderName"
+          placeholder="Nome do Titular (como no cartão)"
+          value={formData.holderName}
+          onChange={handleInputChange}
+          required
+        />
+        <Input
+          name="holderDocument"
+          placeholder="CPF/CNPJ do Titular"
+          value={formData.holderDocument}
+          onChange={handleInputChange}
+          required
+        />
+        <Input
+          name="cardNumber"
+          placeholder="Número do Cartão"
+          value={formData.cardNumber}
+          onChange={handleInputChange}
+          required
+        />
         <div className="flex gap-4">
-          <Input name="expiry" placeholder="Validade (MM/AA)" className="w-1/2" value={formData.expiry} onChange={handleInputChange} required />
-          <Input name="cvv" placeholder="CVV" className="w-1/2" value={formData.cvv} onChange={handleInputChange} required />
+          <Input
+            name="expiry"
+            placeholder="Validade (MM/AA)"
+            className="w-1/2"
+            value={formData.expiry}
+            onChange={handleInputChange}
+            required
+          />
+          <Input
+            name="cvv"
+            placeholder="CVV"
+            className="w-1/2"
+            value={formData.cvv}
+            onChange={handleInputChange}
+            required
+          />
         </div>
 
         {error && <p className="text-red-500 text-sm text-center">{error}</p>}
