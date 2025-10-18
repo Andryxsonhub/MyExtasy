@@ -1,54 +1,64 @@
-// Arquivo: src/hooks/usePagSeguroScript.ts (VERSÃO FINAL PARA O TESTE)
+import { useEffect, useState } from 'react';
 
-// Bloco para corrigir o aviso do ESLint
-declare global {
-  interface Window {
-    PagSeguroDirectPayment?: object;
-  }
-}
+type Status = 'idle' | 'loading' | 'ready' | 'error';
 
-import { useState, useEffect } from 'react';
-
-type ScriptStatus = 'idle' | 'loading' | 'ready' | 'error';
-
-// ATENÇÃO: Esta é a URL de PRODUÇÃO que estamos usando para o teste de diagnóstico.
-const SCRIPT_URL = 'https://stc.pagseguro.uol.com.br/pagseguro/api/v2/checkout/pagseguro.directpayment.js';
-
-const usePagSeguroScript = (): ScriptStatus => {
-  const [status, setStatus] = useState<ScriptStatus>('idle');
+export default function usePagSeguroScript(): Status {
+  const [status, setStatus] = useState<Status>('idle');
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    if (document.querySelector(`script[src="${SCRIPT_URL}"]`)) {
-      // Correção do TypeScript: removido o "(window as any)"
-      if (window.PagSeguroDirectPayment) {
-        setStatus('ready');
-      }
+    // Já carregado?
+    if (window.PagSeguro && typeof window.PagSeguro.encryptCard === 'function') {
+      setStatus('ready');
       return;
     }
 
     setStatus('loading');
-    
-    const script = document.createElement('script');
-    script.src = SCRIPT_URL;
-    script.async = true;
 
-    const onReady = () => setStatus('ready');
+    // Evita duplicar o <script>
+    const existing = document.querySelector<HTMLScriptElement>('script[data-pagbank-encryption="true"]');
+    const src =
+      'https://assets.pagseguro.com.br/checkout-sdk-js/rc/dist/browser/pagseguro.min.js';
+
+    // Linhas antigas comentadas para referência
+    // (import.meta as any).env?.VITE_PAGBANK_JS_URL ||
+    // 'https://assets.pagseguro.com.br/checkout-sdk/encryption.js';
+
+    const onLoad = () => {
+      if (window.PagSeguro && typeof window.PagSeguro.encryptCard === 'function') {
+        setStatus('ready');
+      } else {
+        setStatus('error');
+      }
+    };
+
     const onError = () => setStatus('error');
 
-    script.addEventListener('load', onReady);
-    script.addEventListener('error', onError);
+    if (existing) {
+      existing.addEventListener('load', onLoad);
+      existing.addEventListener('error', onError);
+    } else {
+      const s = document.createElement('script');
+      s.src = src;
+      s.async = true;
+      s.defer = true;
+      //s.crossOrigin = 'anonymous';
+      s.dataset.pagbankEncryption = 'true';
+      s.addEventListener('load', onLoad);
+      s.addEventListener('error', onError);
+      document.head.appendChild(s);
+    }
 
-    document.body.appendChild(script);
+    // “seguro” contra ficar preso no loading
+    const t = window.setTimeout(() => {
+      if (window.PagSeguro && typeof window.PagSeguro.encryptCard === 'function') {
+        setStatus('ready');
+      } else if (status === 'loading') {
+        setStatus('error');
+      }
+    }, 8000);
 
-    return () => {
-      script.removeEventListener('load', onReady);
-      script.removeEventListener('error', onError);
-    };
+    return () => window.clearTimeout(t);
   }, []);
 
   return status;
-};
-
-export default usePagSeguroScript;
+}

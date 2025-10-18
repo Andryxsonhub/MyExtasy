@@ -13,7 +13,6 @@ import usePagSeguroScript from '@/hooks/usePagSeguroScript';
 
 // A lib do PagBank injeta um global. Mantemos como any para não brigar com o TS.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-declare const PagSeguro: any;
 
 /* =========================
    Tipagens
@@ -206,7 +205,7 @@ const PimentaShopModal: React.FC<PimentaShopModalProps> = ({ isOpen, onClose }) 
     };
 
     // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-    const result = PagSeguro.encryptCard(card);
+    const result = window.PagSeguro.encryptCard(card);
     if (result.hasErrors) {
       const errorCode = result.errors[0].code;
       const errorMessage = `Erro nos dados do cartão (código: ${errorCode}). Verifique e tente novamente.`;
