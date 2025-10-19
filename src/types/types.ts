@@ -1,5 +1,5 @@
 // src/types/types.ts
-// src/types/types.ts
+// --- CONFIRME QUE ESTE É O CONTEÚDO ATUAL ---
 
 import { ReactNode } from 'react';
 
@@ -13,7 +13,7 @@ export interface AuthContextType {
   isLoggedIn: boolean;
   setIsLoggedIn: (isLoggedIn: boolean) => void;
   isLoading: boolean;
-  user: UserData | null;
+  user: UserData | null; // <-- Este 'user' é o 'loggedInUser'
   setUser: (user: UserData | null) => void;
 }
 
@@ -22,6 +22,9 @@ export interface MonthlyStats {
   visits: number;
   commentsReceived: number;
   commentsMade: number;
+  likesReceived: number;
+  followers: number;
+  following?: number;
 }
 
 // O tipo principal para os dados do usuário
@@ -43,6 +46,10 @@ export interface UserData {
   fetishes: string | null;
   certificationLevel?: number;
   monthlyStats?: MonthlyStats;
+
+  // --- ESTES CAMPOS PRECISAM ESTAR AQUI ---
+  following?: { followingId: number }[];
+  likesGiven?: { likedUserId: number }[];
 }
 
 // Para a lista de posts

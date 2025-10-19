@@ -1,103 +1,102 @@
-import React, { useState, useEffect, FormEvent } from 'react';
+// src/pages/LivePage.tsx
+// --- CÓDIGO FINAL (Removido import não utilizado de ConnectionState) ---
+
+import React, { useState, useEffect, FormEvent, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '@/services/api';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/contexts/AuthProvider';
-import { 
-    LiveKitRoom, 
-    VideoTrack, 
-    AudioTrack, // 1. IMPORTAMOS O COMPONENTE DE ÁUDIO
+import { Flame } from 'lucide-react';
+import { io, Socket } from 'socket.io-client';
+import {
+    LiveKitRoom,
+    VideoTrack,
+    AudioTrack,
     useTracks,
     ControlBar,
-    useLocalParticipant
+    useLocalParticipant,
+    useRoomContext
 } from '@livekit/components-react';
 import '@livekit/components-styles';
+// --- CORREÇÃO APLICADA AQUI: ConnectionState removido ---
 import { Track } from 'livekit-client';
-import { io, Socket } from 'socket.io-client';
+// --- FIM DA CORREÇÃO ---
 import type { UserData } from '@/types/types';
 
+// ======================================================================
+// COMPONENTE 'LiveLayout' (Player - SEM ALTERAÇÃO)
+// ======================================================================
+const LiveLayout = () => {
+    const tracks = useTracks([Track.Source.Camera, Track.Source.Microphone]);
+    // console.log('[LiveLayout] Tracks recebidos:', tracks);
+
+    const { localParticipant } = useLocalParticipant();
+    const hostVideoTrack = tracks.find(trackRef => trackRef.participant.permissions?.canPublish === true && trackRef.source === Track.Source.Camera);
+    // console.log('[LiveLayout] Host Video Track encontrado:', hostVideoTrack);
+
+    const audioTracks = tracks.filter(trackRef => trackRef.source === Track.Source.Microphone);
+    const isHost = localParticipant?.permissions?.canPublish === true;
+
+    return (
+        <div className="flex-grow flex flex-col bg-black relative w-full h-full overflow-hidden">
+            {hostVideoTrack ? (
+                 <>
+                    {/* {console.log('[LiveLayout] Renderizando VideoTrack...')} */}
+                    <VideoTrack trackRef={hostVideoTrack} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                </>
+            ) : (
+                <>
+                    {/* {console.log('[LiveLayout] hostVideoTrack NÃO encontrado...')} */}
+                    <div className="flex justify-center items-center h-full text-white text-lg font-semibold">
+                        Aguardando o início da transmissão...
+                    </div>
+                </>
+            )}
+            {audioTracks.map(trackRef => (
+                <AudioTrack key={trackRef.participant.sid} trackRef={trackRef} />
+            ))}
+            {isHost && <ControlBar />}
+        </div>
+    );
+};
+
+// ======================================================================
+// COMPONENTE INTERNO: 'LiveContent' (SEM ALTERAÇÃO)
+// ======================================================================
 interface ChatMessage {
     id: string;
     text: string;
     user: Pick<UserData, 'id' | 'name'>;
 }
 
-const LiveLayout = () => {
-    // 2. ALTERAÇÃO PRINCIPAL: AGORA PEDIMOS PELA CÂMERA E PELO MICROFONE
-    const tracks = useTracks([Track.Source.Camera, Track.Source.Microphone]);
-    const { localParticipant } = useLocalParticipant();
+const LiveContent: React.FC = () => {
+    const room = useRoomContext();
+    console.log('[LiveContent] Estado da conexão LiveKit:', room.state);
+    useEffect(() => {
+        console.log('[LiveContent] Estado da conexão mudou para:', room.state);
+    }, [room.state]);
 
-    // Encontra a faixa de vídeo específica do host (quem está publicando)
-    const hostVideoTrack = tracks.find(trackRef => 
-        trackRef.participant.permissions?.canPublish === true && trackRef.source === Track.Source.Camera
-    );
-    
-    // Encontra TODAS as faixas de áudio na sala (do host e de outros, se aplicável)
-    const audioTracks = tracks.filter(trackRef => trackRef.source === Track.Source.Microphone);
-
-    const isHost = localParticipant.permissions?.canPublish === true;
-
-    return (
-        <div className="flex-grow flex flex-col bg-black relative">
-            {hostVideoTrack ? (
-                <VideoTrack trackRef={hostVideoTrack} style={{ width: '100%', height: '100%' }} />
-            ) : (
-                <div className="flex justify-center items-center h-full text-white">
-                    Aguardando o início da transmissão...
-                </div>
-            )}
-            
-            {/* 3. RENDERIZAMOS OS COMPONENTES DE ÁUDIO (ELES SÃO INVISÍVEIS) */}
-            {/* Para cada faixa de áudio, criamos um player de áudio invisível na página */}
-            {audioTracks.map(trackRef => (
-                <AudioTrack key={trackRef.participant.sid} trackRef={trackRef} />
-            ))}
-            
-            {isHost && <ControlBar />}
-        </div>
-    );
-};
-
-const LivePage: React.FC = () => {
-    const { roomName } = useParams<{ roomName: string }>(); 
-    const navigate = useNavigate();
+    // Hooks e Estados do Chat
+    const { roomName } = useParams<{ roomName: string }>();
     const { user } = useAuth();
-    
-    const [token, setToken] = useState<string | null>(null);
-    const [wsUrl, setWsUrl] = useState<string | null>(null);
     const [socket, setSocket] = useState<Socket | null>(null);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [inputValue, setInputValue] = useState('');
-    
-    useEffect(() => {
-        const fetchToken = async () => {
-            if (user && roomName) {
-                try {
-                    const response = await api.get(`/lives/token/${roomName}`);
-                    setToken(response.data.token);
-                    setWsUrl(response.data.wsUrl);
-                } catch (error) {
-                    console.error('Erro ao buscar token do LiveKit:', error);
-                    alert('Não foi possível conectar à live. Verifique se a live ainda está ativa.');
-                    navigate('/explorar');
-                }
-            }
-        };
-        fetchToken();
-    }, [user, navigate, roomName]);
+    const chatContainerRef = useRef<HTMLDivElement>(null);
 
-    useEffect(() => {
+    // Conecta ao Socket.IO
+    useEffect(() => { /* ...código do socket... */
         if (user && roomName) {
             const newSocket = io(import.meta.env.VITE_API_URL || 'http://localhost:3333');
             setSocket(newSocket);
-            newSocket.on('connect', () => {
-                newSocket.emit('join_room', roomName);
-            });
+            newSocket.on('connect', () => { newSocket.emit('join_room', roomName); });
+            newSocket.on('disconnect', () => console.log('Socket desconectado'));
             return () => { newSocket.disconnect(); };
         }
     }, [user, roomName]);
-    
-    useEffect(() => {
+
+    // Ouve mensagens do chat
+    useEffect(() => { /* ...código do listener... */
         if (socket) {
             const handleNewMessage = (msg: ChatMessage) => {
                 setMessages(prevMessages => [...prevMessages, msg]);
@@ -107,13 +106,21 @@ const LivePage: React.FC = () => {
         }
     }, [socket]);
 
-    const handleSendMessage = (e: FormEvent) => {
+    // Auto-scroll
+    useEffect(() => { /* ...código do scroll... */
+        if (chatContainerRef.current) {
+            chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+        }
+    }, [messages]);
+
+    // Envia mensagem
+    const handleSendMessage = (e: FormEvent) => { /* ...código de envio... */
         e.preventDefault();
         if (inputValue.trim() && user && socket && roomName) {
             const messageData: ChatMessage = {
-                id: new Date().getTime().toString(),
+                id: `${socket.id}-${Date.now()}`,
                 text: inputValue,
-                user: { id: user.id, name: user.name },
+                user: { id: user.id, name: user.name || 'Usuário' },
             };
             socket.emit('chat message', messageData, roomName);
             setMessages(prevMessages => [...prevMessages, messageData]);
@@ -121,16 +128,115 @@ const LivePage: React.FC = () => {
         }
     };
 
-    const onLiveStop = async () => {
-        try {
-            await api.post('/live/stop');
-        } catch (error) {
-            console.error("Erro ao tentar parar a live no backend:", error);
-        } finally {
-            navigate('/lives');
-        }
+    // Layout do conteúdo da Live (Vídeo + Chat)
+    return (
+        <div className="flex flex-col md:flex-row h-full bg-black text-white overflow-hidden">
+            {/* Área do Vídeo */}
+            <div className="w-full h-1/2 md:h-full md:flex-grow bg-black">
+                <LiveLayout /> {/* Renderiza o player */}
+            </div>
+            {/* Área do Chat (código omitido por brevidade) */}
+            <div className="w-full h-1/2 md:h-full md:w-80 lg:w-96 bg-gray-900 flex flex-col flex-shrink-0 border-l border-gray-700">
+                 {/* Cabeçalho */}
+                <div className="p-4 border-b border-gray-700 flex-shrink-0">
+                    <h2 className="text-xl font-semibold text-white">Chat ao Vivo</h2>
+                </div>
+                {/* Mensagens */}
+                <div ref={chatContainerRef} className="flex-grow p-4 space-y-3 overflow-y-auto min-h-0">
+                    {messages.map((msg) => ( /* ... Mapeamento das mensagens ... */
+                         <div key={msg.id} className="flex items-start gap-2.5 text-sm">
+                            <span className={`font-semibold flex-shrink-0 ${user && msg.user.id === user.id ? 'text-green-400' : 'text-blue-400'}`}>
+                                {user && msg.user.id === user.id ? 'Você' : msg.user.name || 'Anônimo'}:
+                            </span>
+                            <p className="break-words text-gray-200">{msg.text}</p>
+                        </div>
+                    ))}
+                </div>
+                {/* Rodapé */}
+                <div className="p-4 border-t border-gray-700 flex-shrink-0 bg-gray-800">
+                    {/* Saldo */}
+                    <div className="flex items-center justify-end text-xs text-yellow-500 mb-2">
+                        <Flame className="w-3 h-3 mr-1" />
+                        <span className="text-gray-400">Saldo:</span>
+                        <span className="font-bold ml-1">{user?.pimentaBalance ?? 0}</span>
+                    </div>
+                    {/* Formulário */}
+                    <form onSubmit={handleSendMessage} className="flex gap-2"> {/* ... Formulário do chat ... */ }
+                        <input
+                            type="text"
+                            placeholder={user ? "Sua mensagem..." : "Autenticando..."}
+                            value={inputValue}
+                            onChange={(e) => setInputValue(e.target.value)}
+                            disabled={!user || !socket}
+                            className="flex-grow p-2 rounded-md bg-gray-700 border border-gray-600 text-white text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50"
+                        />
+                        <button
+                            type="submit"
+                            disabled={!user || !socket || inputValue.trim() === ''}
+                            className="p-2 bg-purple-600 rounded-md font-semibold text-sm hover:bg-purple-700 transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed flex-shrink-0"
+                        >
+                            Enviar
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
+// ======================================================================
+// COMPONENTE 'LivePage' (Página Principal - SEM ALTERAÇÃO NESTA VERSÃO)
+// ======================================================================
+const LivePage: React.FC = () => {
+    const { roomName } = useParams<{ roomName: string }>();
+    const navigate = useNavigate();
+    const { user } = useAuth();
+    const [token, setToken] = useState<string | null>(null);
+    const [wsUrl, setWsUrl] = useState<string | null>(null);
+
+    // Efeito para buscar o token
+    useEffect(() => {
+        const fetchToken = async () => {
+            if (user && roomName) {
+                try {
+                    console.log(`[LivePage] Buscando token para sala: ${roomName}`);
+                    const response = await api.get(`/lives/token/${roomName}`);
+                    console.log("[LivePage] Token recebido:", response.data.token ? 'OK' : 'FALHOU');
+                    console.log("[LivePage] WS URL recebida:", response.data.wsUrl);
+                    setToken(response.data.token);
+                    setWsUrl(response.data.wsUrl);
+                } catch (error) {
+                    console.error('Erro ao buscar token do LiveKit:', error);
+                    alert('Não foi possível conectar à live. Verifique se a live ainda está ativa ou tente novamente.');
+                    navigate('/lives');
+                }
+            }
+        };
+        fetchToken();
+    }, [user, navigate, roomName]);
+
+    // Função handleDisconnected
+     const handleDisconnected = async () => {
+         console.log("LiveKitRoom desconectado...");
+         try {
+             await api.post('/lives/stop');
+             console.log("Informado backend sobre a parada da live (ou tentativa).");
+         } catch(error) {
+             console.warn("Chamada para /lives/stop falhou ou não era necessária:", error);
+         } finally {
+             navigate('/lives');
+         }
+     };
+
+     // Função onError
+    const handleLiveKitError = (error: Error) => {
+        console.error("[LiveKitRoom ERROR] Erro durante a conexão:", error);
+        alert(`Erro de conexão com a Live: ${error.message}. Verifique sua conexão ou tente novamente.`);
+        // navigate('/lives'); // Descomente para redirecionar em caso de erro grave
     };
 
+    // Renderiza loading
     if (!token || !wsUrl) {
         return (
             <Layout>
@@ -141,6 +247,7 @@ const LivePage: React.FC = () => {
         );
     }
 
+    // Renderiza a LiveKitRoom
     return (
         <Layout>
             <LiveKitRoom
@@ -150,41 +257,10 @@ const LivePage: React.FC = () => {
                 serverUrl={wsUrl}
                 data-lk-theme="default"
                 style={{ height: 'calc(100vh - 64px)' }}
-                onDisconnected={onLiveStop}
+                onDisconnected={handleDisconnected}
+                onError={handleLiveKitError}
             >
-                <div className="flex flex-col md:flex-row h-full">
-                    <LiveLayout />
-                    <div className="w-full md:w-80 lg:w-96 bg-gray-800 flex flex-col flex-shrink-0 border-l border-gray-700 h-full">
-                        <div className="p-4 border-b border-gray-700"><h2 className="text-xl font-semibold">Chat ao Vivo</h2></div>
-                        <div className="flex-grow p-4 space-y-4 overflow-y-auto">
-                            {messages.map((msg) => (
-                                <div key={msg.id} className="flex items-start gap-3">
-                                    <span className={`font-bold ${user && msg.user.id === user.id ? 'text-green-400' : 'text-blue-400'}`}>
-                                        {user && msg.user.id === user.id ? 'Você' : msg.user.name}:
-                                    </span> 
-                                    <p className="break-words text-white">{msg.text}</p>
-                                </div>
-                            ))}
-                        </div>
-                        <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-700">
-                            <input 
-                                type="text" 
-                                placeholder={user ? "Digite sua mensagem..." : "Autenticando..."}
-                                value={inputValue}
-                                onChange={(e) => setInputValue(e.target.value)}
-                                disabled={!user || !socket}
-                                className="w-full p-2 rounded-lg bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50" 
-                            />
-                            <button 
-                                type="submit" 
-                                disabled={!user || !socket || inputValue.trim() === ''}
-                                className="w-full mt-2 p-2 bg-purple-600 rounded-lg font-bold hover:bg-purple-700 transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
-                            >
-                                Enviar
-                            </button>
-                        </form>
-                    </div>
-                </div>
+                <LiveContent /> {/* Renderiza o componente interno */}
             </LiveKitRoom>
         </Layout>
     );
