@@ -1,4 +1,5 @@
-// src/components/Header.tsx (VERSÃO REATORADA E CORRIGIDA)
+// src/components/Header.tsx (VERSÃO CORRIGIDA)
+// Correção: Removido "hidden sm:" da classe do contador de pimentas para exibi-lo no mobile.
 
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
@@ -24,8 +25,11 @@ const Header: React.FC = () => {
   //    Não precisamos mais dela, pois vamos usar a função centralizada do AuthProvider.
 
   const avatarUrl = user?.profilePictureUrl
-    ? `<img src={user.profilePictureUrl} />`
+    ? `<img src={user.profilePictureUrl} />` // Nota: Isto pode estar errado. Se avatarUrl for usado em <AvatarImage src={avatarUrl}>, ele deve ser apenas a string da URL.
     : undefined;
+
+  // CORREÇÃO: Se 'avatarUrl' for apenas a URL, o correto seria:
+  const finalAvatarUrl = user?.profilePictureUrl || undefined;
 
   return (
     <> 
@@ -51,10 +55,17 @@ const Header: React.FC = () => {
           <div className="flex items-center space-x-4">
             {isLoggedIn ? (
               <>
-                <div className="hidden sm:flex items-center gap-2 bg-black/30 px-3 py-1.5 rounded-full border border-gray-700">
+                {/* ============================================================
+                  AQUI ESTÁ A CORREÇÃO:
+                  Removido "hidden" e "sm:flex" e deixado apenas "flex"
+                  para o contador de pimentas aparecer no mobile.
+                  ============================================================
+                */}
+                <div className="flex items-center gap-2 bg-black/30 px-3 py-1.5 rounded-full border border-gray-700">
                   <span className="text-xl" role="img" aria-label="pimenta">🌶️</span>
                   <span className="text-base font-bold text-white">{user?.pimentaBalance ?? 0}</span>
                 </div>
+                
                 <Button 
                   onClick={() => setShopOpen(true)} 
                   variant="destructive" 
@@ -62,12 +73,17 @@ const Header: React.FC = () => {
                 >
                   Comprar Pimentas
                 </Button>
+                
                 <NavLink to="/meu-perfil">
                   <Avatar className="h-9 w-9">
-                    <AvatarImage src={avatarUrl} alt={user?.name} />
+                    {/* Pequena correção aqui também: 
+                      Passe a URL diretamente para 'src', em vez da string com <img> 
+                    */}
+                    <AvatarImage src={finalAvatarUrl} alt={user?.name} />
                     <AvatarFallback>{user?.name?.substring(0, 2).toUpperCase()}</AvatarFallback>
                   </Avatar>
                 </NavLink>
+                
                 {/* 3. Usamos a função 'logout' diretamente aqui */}
                 <Button onClick={logout} variant="ghost" className="text-white hidden sm:inline-flex">Sair</Button>
               </>
