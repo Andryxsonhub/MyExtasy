@@ -1,15 +1,15 @@
 // src/components/ProfileHeader.tsx
-// --- VERSÃO FINAL (Correção ts(7006) - 'any' implícito) ---
+// --- VERSÃO CORRIGIDA (Conecta com a API de Like) ---
 
 import React, { useState, useRef, useEffect } from 'react';
-import api from '../services/api';
+import api from '../services/api'; // Usaremos a 'api'
 import { Camera, Loader2, UserCheck, UserPlus, Heart } from 'lucide-react';
 import type { UserData } from '../types/types';
 
-// 1. Importando o hook de Autenticação
+// 1. Importando o hook de Autenticação (ainda necessário)
 import { useAuth } from '../contexts/AuthProvider';
-// 2. Importando as novas funções da API
-import { followUser, unfollowUser, likeProfile, unlikeProfile } from '../services/interactionApi';
+// 2. Importando as funções de Seguir (imports de Like removidos)
+import { followUser, unfollowUser } from '../services/interactionApi';
 
 interface ProfileHeaderProps {
   user: UserData;
@@ -22,30 +22,31 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user, onEditClick, onCove
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // 3. Pegando o usuário logado do contexto
-  const { user: loggedInUser } = useAuth();
+  const { user: loggedInUser } = useAuth(); // (Sem alteração)
 
-  // 4. Estados para os novos botões
+  // 3. Estados para os botões (likeCount adicionado)
   const [isFollowed, setIsFollowed] = useState(false);
-  const [isLiked, setIsLiked] = useState(false);
   const [isFollowLoading, setIsFollowLoading] = useState(false);
+  
+  // O estado agora é inicializado com os dados que vêm do backend via props
+  const [isLiked, setIsLiked] = useState(user.isLikedByMe || false);
+  const [likeCount, setLikeCount] = useState(user.likeCount || 0);
   const [isLikeLoading, setIsLikeLoading] = useState(false);
 
-  // 5. Lógica para definir o estado inicial dos botões
+  // 4. Lógica para definir o estado inicial (corrigida)
   useEffect(() => {
+    // Sincroniza o estado local com os dados do perfil carregado
+    // Isso garante que os botões resetem ao navegar para outro perfil
     
-    // --- ESTA É A LINHA CORRIGIDA (f) ---
-    // Adicionamos (f: { followingId: number }) para dizer ao TS o tipo de 'f'
-    const alreadyFollowing = loggedInUser?.following?.some((f: { followingId: number }) => f.followingId === user.id) || false;
+    // Lógica de Seguir (sem alteração, mas corrigida para evitar erro de 'any')
+    const alreadyFollowing = loggedInUser?.following?.some((f: any) => f.followingId === user.id) || false;
     setIsFollowed(alreadyFollowing);
 
-    // --- ESTA É A LINHA CORRIGIDA (l) ---
-    // Adicionamos (l: { likedUserId: number }) para dizer ao TS o tipo de 'l'
-    const alreadyLiked = loggedInUser?.likesGiven?.some((l: { likedUserId: number }) => l.likedUserId === user.id) || false;
-    setIsLiked(alreadyLiked);
+    // Lógica de Curtir (agora lê dos dados do perfil)
+    setIsLiked(user.isLikedByMe || false);
+    setLikeCount(user.likeCount || 0);
     
-    // Resetar os estados quando o perfil do usuário (user.id) mudar
-  }, [user.id, loggedInUser]);
+  }, [user.id, user.isLikedByMe, user.likeCount, loggedInUser]); // Depende do user.id e dos novos dados
   
   // --- Lógica de Upload de Capa (Sem alteração) ---
   const handleCoverUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -84,39 +85,49 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user, onEditClick, onCove
   };
   const membershipDuration = calculateMembershipDuration(user.createdAt);
 
-  // --- 6. FUNÇÕES DE TOGGLE PARA OS NOVOS BOTÕES (Sem alteração) ---
+  // --- 5. FUNÇÕES DE TOGGLE ATUALIZADAS ---
+  
+  // handleFollowToggle (Sem alteração)
   const handleFollowToggle = async () => {
     setIsFollowLoading(true);
     try {
       if (isFollowed) {
         await unfollowUser(user.id);
         setIsFollowed(false);
-        // TODO: Atualizar o contador de seguidores no 'loggedInUser' (Contexto)
       } else {
         await followUser(user.id);
         setIsFollowed(true);
-        // TODO: Atualizar o contador de seguidores no 'loggedInUser' (Contexto)
       }
     } catch (err) {
       console.error("Erro ao seguir/deseguir:", err);
-      // Reverte o estado se a API falhar (opcional)
     } finally {
       setIsFollowLoading(false);
     }
   };
   
+  // handleLikeToggle (CORRIGIDO)
   const handleLikeToggle = async () => {
+    if (isLikeLoading) return; // Previne cliques duplos
     setIsLikeLoading(true);
+
+    // Atualização Otimista (a UI atualiza ANTES da resposta da API)
+    const newLikedState = !isLiked;
+    const newLikeCount = newLikedState ? likeCount + 1 : likeCount - 1;
+    setIsLiked(newLikedState);
+    setLikeCount(newLikeCount);
+
     try {
-      if (isLiked) {
-        await unlikeProfile(user.id);
-        setIsLiked(false);
-      } else {
-        await likeProfile(user.id);
-        setIsLiked(true);
-      }
+      // Chama a rota de "toggle" que criamos no backend
+      // Não precisamos mais de 'likeProfile' ou 'unlikeProfile'
+      await api.post(`/users/profile/${user.id}/like`);
+      
+      // Se a API funcionou, nosso estado otimista estava correto.
+      
     } catch (err) {
       console.error("Erro ao curtir/descurtir:", err);
+      // Se a API falhar, reverte o estado para o original
+      setIsLiked(!newLikedState);
+      setLikeCount(likeCount);
     } finally {
       setIsLikeLoading(false);
     }
@@ -125,7 +136,7 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user, onEditClick, onCove
 
   return (
     <div className="bg-card text-white rounded-lg shadow-lg overflow-hidden">
-      {/* Bloco da Capa (Sem alteração na lógica de upload) */}
+      {/* Bloco da Capa (Sem alteração) */}
       <div className="relative h-48 sm:h-64 group bg-gray-800">
         {fullCoverImageUrl ? (
           <img src={fullCoverImageUrl} alt="Foto de capa" className="w-full h-full object-cover object-top" />
@@ -152,7 +163,7 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user, onEditClick, onCove
         )}
       </div>
 
-      {/* Bloco Principal do Header (Avatar, Nome, Botões) */}
+      {/* Bloco Principal do Header (Sem alteração, exceto o botão de Like) */}
       <div className="p-6 pt-0 -mt-16 sm:-mt-20 z-10 relative">
         <div className="flex flex-col sm:flex-row items-end sm:items-center gap-6">
           
@@ -171,17 +182,18 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user, onEditClick, onCove
             {user.location && <p className="text-gray-400 mt-1">📍 {user.location}</p>}
           </div>
 
-          {/* --- 7. BLOCO DE BOTÕES ATUALIZADO (Sem alteração) --- */}
+          {/* --- 6. BLOCO DE BOTÕES ATUALIZADO --- */}
           <div className="flex flex-col items-center sm:items-end gap-2 w-full sm:w-auto">
             
             {isMyProfile ? (
-              // Se FOR o meu perfil, mostra "Editar perfil"
+              // Se FOR o meu perfil
               <button onClick={onEditClick} className="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition-colors w-full sm:w-auto">
                 Editar perfil
               </button>
             ) : (
-              // Se NÃO FOR o meu perfil, mostra "Seguir" e "Curtir"
+              // Se NÃO FOR o meu perfil
               <div className="flex gap-2 w-full sm:w-auto">
+                {/* Botão Seguir (Sem alteração) */}
                 <button
                   onClick={handleFollowToggle}
                   disabled={isFollowLoading}
@@ -197,6 +209,7 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user, onEditClick, onCove
                   <span>{isFollowed ? 'Seguindo' : 'Seguir'}</span>
                 </button>
                 
+                {/* Botão Curtir (Atualizado para mostrar a contagem) */}
                 <button
                   onClick={handleLikeToggle}
                   disabled={isLikeLoading}
@@ -209,7 +222,8 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user, onEditClick, onCove
                   `}
                 >
                   {isLikeLoading ? <Loader2 className="animate-spin w-5 h-5" /> : <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />}
-                  <span>{isLiked ? 'Curtiu' : 'Curtir'}</span>
+                  {/* O texto agora mostra a contagem! */}
+                  <span>{likeCount}</span>
                 </button>
               </div>
             )}
@@ -225,4 +239,4 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user, onEditClick, onCove
   );
 };
 
-export default ProfileHeader;
+export default ProfileHeader; 

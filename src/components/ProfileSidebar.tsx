@@ -1,29 +1,46 @@
-// src/components/ProfileSidebar.tsx (VERSÃO ATUALIZADA)
+// src/components/ProfileSidebar.tsx (VERSÃO ATUALIZADA - Números clicáveis)
 
 import React from 'react';
 import { ChevronRight } from 'lucide-react';
-// 1. IMPORTANTE: Precisamos que o seu tipo 'UserData' inclua os novos campos.
-// Você precisará atualizar o 'monthlyStats' dentro de 'src/types/types.ts'
-// para incluir 'likesReceived: number' e 'followers: number'.
-import type { UserData } from '../types/types'; 
+// Garantir que a interface MonthlyStats em types.ts tenha 'likesReceived' e 'followers'
+import type { UserData, MonthlyStats } from '../types/types';
+
+// Definindo o tipo para a função de callback
+export type StatType = 'followers' | 'following' | 'likers'; // Adicione 'following' se for implementado
 
 interface ProfileSidebarProps {
   user: UserData;
   onViewCertificationClick: () => void;
   onViewStatsClick: () => void;
+  // Nova prop para lidar com o clique nas estatísticas
+  onStatClick: (statType: StatType, userId: number) => void;
 }
 
-const ProfileSidebar: React.FC<ProfileSidebarProps> = ({ user, onViewCertificationClick, onViewStatsClick }) => {
+const ProfileSidebar: React.FC<ProfileSidebarProps> = ({
+  user,
+  onViewCertificationClick,
+  onViewStatsClick,
+  onStatClick // Recebe a nova função
+}) => {
   const certificationLevel = user.certificationLevel ?? 0;
-  
-  // 2. Os dados agora virão do 'user.monthlyStats'
-  // (O componente PAI será responsável por colocar os dados aqui)
-  const stats = user.monthlyStats ?? { 
-    visits: 0, 
-    commentsReceived: 0, 
+
+  // Usa um tipo mais específico para stats, incluindo os campos que esperamos
+  const stats: Partial<MonthlyStats> = user.monthlyStats ?? {
+    visits: 0,
+    commentsReceived: 0,
     commentsMade: 0,
     likesReceived: 0, // Valor padrão
     followers: 0,     // Valor padrão
+  };
+
+  // Função auxiliar para tornar o código mais limpo
+  const handleStatItemClick = (statType: StatType) => {
+      // Só chama a função se o usuário realmente existir (evita erros)
+      if(user?.id) {
+          onStatClick(statType, user.id);
+      } else {
+          console.warn("ID do usuário não encontrado para abrir modal de estatísticas.");
+      }
   };
 
   return (
@@ -43,40 +60,77 @@ const ProfileSidebar: React.FC<ProfileSidebarProps> = ({ user, onViewCertificati
         </button>
       </div>
 
-      {/* Bloco de Estatísticas (Atualizado) */}
+      {/* Bloco de Estatísticas (Atualizado com onClick) */}
       <div className="bg-card p-6 rounded-lg shadow-lg">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-bold text-white">Estatísticas do mês</h3>
+          {/* O botão "Ver tudo" pode continuar abrindo o modal antigo de stats gerais */}
           <button onClick={onViewStatsClick} className="text-primary text-sm font-semibold hover:underline">Ver tudo</button>
         </div>
-        
+
         <ul className="space-y-3">
+          {/* Visitas (Não clicável por enquanto) */}
           <li className="flex justify-between items-center text-sm">
             <span className="text-gray-400">Visitas recebidas</span>
-            <span className="text-white font-semibold">{stats.visits}</span>
+            <span className="text-white font-semibold">{stats.visits ?? 0}</span>
           </li>
+          {/* Comentários (Não clicável por enquanto) */}
           <li className="flex justify-between items-center text-sm">
             <span className="text-gray-400">Comentários recebidos</span>
-            <span className="text-white font-semibold">{stats.commentsReceived}</span>
+            <span className="text-white font-semibold">{stats.commentsReceived ?? 0}</span>
           </li>
           <li className="flex justify-between items-center text-sm">
             <span className="text-gray-400">Comentários feitos</span>
-            <span className="text-white font-semibold">{stats.commentsMade}</span>
+            <span className="text-white font-semibold">{stats.commentsMade ?? 0}</span>
           </li>
-          
-          {/* --- 3. NOVAS LINHAS ADICIONADAS AQUI --- */}
-          
+
+          {/* ==============================================
+               MODIFICAÇÃO AQUI: Números clicáveis
+              ============================================== */}
+
+          {/* Curtidas Recebidas (Clicável) */}
           <li className="flex justify-between items-center text-sm">
             <span className="text-gray-400">Curtidas recebidas</span>
-            {/* O 'stats.likesReceived' virá do componente PAI */}
-            <span className="text-white font-semibold">{stats.likesReceived ?? 0}</span>
+            {/* Adiciona um botão ou div com onClick */}
+            <button
+              onClick={() => handleStatItemClick('likers')}
+              className="text-white font-semibold hover:text-primary hover:underline cursor-pointer"
+              disabled={(stats.likesReceived ?? 0) === 0} // Desabilita se for 0
+            >
+              {stats.likesReceived ?? 0}
+            </button>
           </li>
+
+          {/* Seguidores (Clicável) */}
           <li className="flex justify-between items-center text-sm">
             <span className="text-gray-400">Seguidores</span>
-            {/* O 'stats.followers' virá do componente PAI */}
-            <span className="text-white font-semibold">{stats.followers ?? 0}</span>
+            {/* Adiciona um botão ou div com onClick */}
+             <button
+              onClick={() => handleStatItemClick('followers')}
+              className="text-white font-semibold hover:text-primary hover:underline cursor-pointer"
+              disabled={(stats.followers ?? 0) === 0} // Desabilita se for 0
+            >
+              {stats.followers ?? 0}
+            </button>
           </li>
-          
+
+          {/* Seguindo (Adicionar se necessário) */}
+          {/*
+          <li className="flex justify-between items-center text-sm">
+            <span className="text-gray-400">Seguindo</span>
+            <button
+              onClick={() => handleStatItemClick('following')}
+              className="text-white font-semibold hover:text-primary hover:underline cursor-pointer"
+              disabled={(stats.following ?? 0) === 0}
+            >
+              {stats.following ?? 0}
+            </button>
+          </li>
+          */}
+           {/* ==============================================
+               FIM DA MODIFICAÇÃO
+              ============================================== */}
+
         </ul>
       </div>
     </div>

@@ -1,6 +1,6 @@
-// src/App.tsx (VERSÃO 100% COMPLETA E CORRIGIDA)
+// src/App.tsx (VERSÃO 100% COMPLETA E CORRIGIDA - Nomes TermosDeUso ajustados)
 
-import { useEffect } from 'react'; 
+import { useEffect } from 'react';
 import { Toaster } from "./components/ui/toaster";
 import { Toaster as Sonner } from "./components/ui/sonner";
 import { TooltipProvider } from "./components/ui/tooltip";
@@ -12,6 +12,7 @@ import { AuthProvider, useAuth } from "./contexts/AuthProvider";
 import api from './services/api';
 
 import Header from "./components/Header";
+import Footer from "./components/Footer"; // Importar o Footer para renderizar
 import ProtectedRoute from "./components/ProtectedRoute";
 
 // Páginas
@@ -26,9 +27,11 @@ import Sugestoes from "./pages/Sugestoes";
 import UserProfilePage from "./pages/UserProfilePage";
 import LivePage from './pages/Live';
 import Sobre from './pages/Sobre';
+import Contato from './pages/Contato';
 import RegistrationFlow from "./components/registration/RegistrationFlow";
+import TermosDeUso from './pages/TermosDeUso'; // <-- CORREÇÃO 1: Nome do import e arquivo
 
-import ExplorePage from "./pages/ExplorePage"; 
+import ExplorePage from "./pages/ExplorePage";
 
 const queryClient = new QueryClient();
 
@@ -55,7 +58,7 @@ const GithubCallbackHandler = () => {
       }
     };
     const code = searchParams.get('code');
-    if (code) { authenticateWithCode(code); }  
+    if (code) { authenticateWithCode(code); }
     else { navigate('/entrar', { state: { error: 'Código de autorização do GitHub não encontrado.' } }); }
   }, [navigate, searchParams, setIsLoggedIn]);
 
@@ -74,26 +77,23 @@ const AppRoutes = () => {
             <Route path="/entrar" element={<Entrar />} />
             <Route path="/sobre" element={<Sobre />} />
             <Route path="/cadastrar" element={<RegistrationFlow />} />
+            <Route path="/contato" element={<Contato />} />
+            <Route path="/termos-de-uso" element={<TermosDeUso />} /> {/* <-- CORREÇÃO 2: Nome do element */}
 
-      {/* --- Rotas Protegidas --- */}
-      <Route path="/explorar" element={<ProtectedRoute><Explorar /></ProtectedRoute>} />
-      <Route path="/lives" element={<ProtectedRoute><Lives /></ProtectedRoute>} />
-      
-      {/* ========================================================== */}
-      {/* AQUI ESTÁ A CORREÇÃO PRINCIPAL DE TODO O PROBLEMA */}
-      {/* ========================================================== */}
-      <Route path="/live/:roomName" element={<ProtectedRoute><LivePage /></ProtectedRoute>} />
 
-      <Route path="/sugestoes" element={<ProtectedRoute><Sugestoes /></ProtectedRoute>} />
-      
-      <Route path="/home" element={<ProtectedRoute><ExplorePage /></ProtectedRoute>} />
-      
-      <Route path="/profile/:userId" element={<ProtectedRoute><UserProfilePage /></ProtectedRoute>} />
-      <Route path="/meu-perfil" element={<ProtectedRoute><UserProfilePage /></ProtectedRoute>} />
-      
-      <Route path="*" element={<NotFound />} />
-    </Routes>
-  );
+            {/* --- Rotas Protegidas --- */}
+            <Route path="/explorar" element={<ProtectedRoute><Explorar /></ProtectedRoute>} />
+            <Route path="/lives" element={<ProtectedRoute><Lives /></ProtectedRoute>} />
+            <Route path="/live/:roomName" element={<ProtectedRoute><LivePage /></ProtectedRoute>} />
+            <Route path="/sugestoes" element={<ProtectedRoute><Sugestoes /></ProtectedRoute>} />
+            <Route path="/home" element={<ProtectedRoute><ExplorePage /></ProtectedRoute>} />
+            <Route path="/profile/:userId" element={<ProtectedRoute><UserProfilePage /></ProtectedRoute>} />
+            <Route path="/meu-perfil" element={<ProtectedRoute><UserProfilePage /></ProtectedRoute>} />
+
+            {/* Rota Catch-all para Not Found */}
+            <Route path="*" element={<NotFound />} />
+        </Routes>
+    );
 };
 
 const App = () => {
@@ -105,9 +105,13 @@ const App = () => {
                 <BrowserRouter>
                     <AuthProvider>
                         <Header />
-                        <main className="pt-16">
-                            <AppRoutes />
-                        </main>
+                        {/* Adicionado flex e flex-col para o Footer ficar no final */}
+                        <div className="flex flex-col min-h-screen">
+                          <main className="flex-grow pt-16"> {/* Adicionado flex-grow */}
+                              <AppRoutes />
+                          </main>
+                          <Footer /> {/* Renderizar o Footer */}
+                        </div>
                     </AuthProvider>
                 </BrowserRouter>
             </TooltipProvider>

@@ -1,5 +1,5 @@
 // src/types/types.ts
-// --- CONFIRME QUE ESTE É O CONTEÚDO ATUAL ---
+// --- VERSÃO ATUALIZADA (com campos de Like) ---
 
 import { ReactNode } from 'react';
 
@@ -50,6 +50,12 @@ export interface UserData {
   // --- ESTES CAMPOS PRECISAM ESTAR AQUI ---
   following?: { followingId: number }[];
   likesGiven?: { likedUserId: number }[];
+
+  // ==========================================
+  // NOVOS CAMPOS ADICIONADOS AQUI
+  // ==========================================
+  likeCount?: number;
+  isLikedByMe?: boolean;
 }
 
 // Para a lista de posts
