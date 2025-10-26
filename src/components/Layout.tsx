@@ -1,9 +1,9 @@
-// src/components/Layout.tsx (VERSÃO FINAL E CORRETA)
+// src/components/Layout.tsx (VERSÃO CORRIGIDA - Footer Removido)
 
 import React, { ReactNode } from 'react';
-import Header from './Header';
-// ALTERAÇÃO 1: Importamos o Footer para poder usá-lo
-import Footer from './Footer';
+// ALTERAÇÃO 1: REMOVIDO import do Header e Footer, pois são renderizados no App.tsx
+// import Header from './Header';
+// import Footer from './Footer'; 
 
 interface LayoutProps {
   children: ReactNode;
@@ -11,13 +11,17 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
-    <div className="flex flex-col min-h-screen bg-background">
-      <Header />
-      <main className="flex-grow">
+    // O div principal pode continuar, ele ajuda a garantir a estrutura
+    // Removido min-h-screen e bg-background daqui, pois App.tsx já controla isso
+    <div className="flex flex-col flex-grow"> 
+      {/* Header não é mais necessário aqui */}
+      {/* <Header /> */}
+      {/* A main agora só contém os filhos, o App.tsx cuida do padding do Header */}
+      <main className="flex-grow"> 
         {children}
       </main>
-      {/* ALTERAÇÃO 2: Descomentamos a linha para renderizar o Footer */}
-      <Footer />
+      {/* ALTERAÇÃO 2: A linha que renderizava o Footer foi REMOVIDA daqui */}
+      {/* <Footer /> */}
     </div>
   );
 };

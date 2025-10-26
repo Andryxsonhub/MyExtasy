@@ -1,5 +1,4 @@
-// src/types/types.ts
-// --- VERSÃO ATUALIZADA (com campos de Like) ---
+// src/types/types.ts (VERSÃO FINAL COMPLETA - Com logout)
 
 import { ReactNode } from 'react';
 
@@ -13,8 +12,9 @@ export interface AuthContextType {
   isLoggedIn: boolean;
   setIsLoggedIn: (isLoggedIn: boolean) => void;
   isLoading: boolean;
-  user: UserData | null; // <-- Este 'user' é o 'loggedInUser'
+  user: UserData | null;
   setUser: (user: UserData | null) => void;
+  logout: () => void; // <--- CORREÇÃO: ADICIONADO AQUI
 }
 
 // Para as estatísticas do Sidebar
@@ -46,14 +46,13 @@ export interface UserData {
   fetishes: string | null;
   certificationLevel?: number;
   monthlyStats?: MonthlyStats;
-
-  // --- ESTES CAMPOS PRECISAM ESTAR AQUI ---
+  
+  // Campos de interação
   following?: { followingId: number }[];
+  blockedUsers?: { blockedUserId: number }[]; 
   likesGiven?: { likedUserId: number }[];
-
-  // ==========================================
-  // NOVOS CAMPOS ADICIONADOS AQUI
-  // ==========================================
+  
+  // Campos de like (no perfil)
   likeCount?: number;
   isLikedByMe?: boolean;
 }
@@ -75,6 +74,8 @@ export interface Photo {
   url: string;
   description: string | null;
   createdAt: string;
+  likeCount: number;
+  isLikedByMe: boolean;
 }
 
 export interface Video {
@@ -82,4 +83,6 @@ export interface Video {
   url: string;
   description: string | null;
   createdAt: string;
+  likeCount: number;
+  isLikedByMe: boolean;
 }

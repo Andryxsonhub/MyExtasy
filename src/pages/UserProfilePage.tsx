@@ -1,5 +1,5 @@
 // src/pages/UserProfilePage.tsx
-// --- ATUALIZADO (Adiciona estado e função para o novo Modal de Stats) ---
+// --- VERSÃO FINAL COMPLETA COM CORREÇÃO DE CACHE BUSTING (C02) ---
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
@@ -59,7 +59,6 @@ const UserProfilePage: React.FC = () => {
   // --- 2. NOVOS ESTADOS PARA O MODAL DETALHADO ---
   const [isDetailedStatsModalOpen, setIsDetailedStatsModalOpen] = useState(false);
   const [detailedStatType, setDetailedStatType] = useState<StatType | null>(null);
-  // Não precisamos guardar o userId aqui, pois já o temos em 'profileData' ou 'userId' (do useParams)
 
   // --- 3. FUNÇÃO PARA ABRIR O MODAL DETALHADO ---
   const openDetailedStatsModal = (statType: StatType) => {
@@ -79,7 +78,7 @@ const UserProfilePage: React.FC = () => {
   };
   // --- FIM DAS NOVAS ADIÇÕES DE ESTADO/FUNÇÃO ---
 
-  // fetchData (Atualizado para buscar stats apenas se for meu perfil)
+  // fetchData (Atualizado para buscar stats e aplicar Cache Busting)
   const fetchData = useCallback(async () => {
     const isViewingOwnProfile = !!(location.pathname === '/meu-perfil' || (userId && loggedInUser && parseInt(userId, 10) === loggedInUser.id));
     setIsMyProfile(isViewingOwnProfile);
@@ -97,39 +96,47 @@ const UserProfilePage: React.FC = () => {
       
       let completeProfileData = profileResponse.data;
 
-      // Se for o MEU perfil, busca as estatísticas adicionais (likes, followers)
+      // Se for o MEU perfil, busca as estatísticas adicionais
       if (isViewingOwnProfile) {
         try {
           const statsData = await fetchMyStats(); // Esta função busca /interactions/my-stats
           completeProfileData = {
             ...completeProfileData,
-            // Mescla as stats buscadas com as stats que já vieram (visitas, etc.)
             monthlyStats: {
-              ...(completeProfileData.monthlyStats || {}), // Mantém visitas, comments
-              likesReceived: statsData.likesReceived,     // Adiciona/Atualiza likes
-              followers: statsData.followers          // Adiciona/Atualiza followers
+              ...(completeProfileData.monthlyStats || {}), 
+              likesReceived: statsData.likesReceived, 
+              followers: statsData.followers 
             }
           };
         } catch (statsError) {
           console.error("Erro ao buscar estatísticas da sidebar:", statsError);
-          // Continua mesmo se as stats falharem, mas inicializa para evitar erros
-           completeProfileData.monthlyStats = {
+            completeProfileData.monthlyStats = {
                 ...(completeProfileData.monthlyStats || {}),
                 likesReceived: 0,
                 followers: 0
            };
         }
       }
-      // Se NÃO for meu perfil, os dados de like (likeCount, isLikedByMe) JÁ VÊM na profileResponse.data
 
       setProfileData(completeProfileData);
       setPosts(postsResponse.data);
-      setPhotos(photosResponse.data);
+      
+      // *************************************************************************
+      // SOLUÇÃO C02 FORÇADA: Adiciona parâmetro de cache aleatório para contornar cache de CORS
+      const cacheBuster = `v=${Date.now()}`;
+      const photosWithCacheBuster: Photo[] = photosResponse.data.map((photo: Photo) => ({
+        ...photo,
+        url: photo.url.includes('?') 
+          ? `${photo.url}&${cacheBuster}` 
+          : `${photo.url}?${cacheBuster}`
+      }));
+
+      setPhotos(photosWithCacheBuster); // <--- ATUALIZADO
+      // *************************************************************************
+      
       setVideos(videosResponse.data);
     } catch (err) {
       setError('Erro ao carregar dados do perfil.'); console.error('Erro fetchData:', err);
-      // Considerar redirecionar ou mostrar mensagem de erro mais clara
-      // navigate('/explorar'); // Comentado para não redirecionar imediatamente
     } finally { setIsLoading(false); }
   }, [navigate, userId, location.pathname, loggedInUser]);
   
@@ -183,20 +190,19 @@ const UserProfilePage: React.FC = () => {
             </div>
 
             {/* Sidebar (Agora recebe a função onStatClick) */}
-            {/* Renderiza a Sidebar sempre, mas o conteúdo dela pode variar se não for meu perfil */}
-            <div className="w-full md:w-1/3 self-start md:sticky md:top-24"> {/* Adicionado self-start e sticky */}
+            <div className="w-full md:w-1/3 self-start md:sticky md:top-24"> 
               <ProfileSidebar
                   user={profileData}
-                  onViewCertificationClick={isMyProfile ? openCertificationModal : () => {}} // Só abre se for meu perfil
-                  onViewStatsClick={isMyProfile ? openStatsModal : () => {}} // Só abre se for meu perfil
-                  onStatClick={openDetailedStatsModal} // Passa a função para abrir o novo modal
+                  onViewCertificationClick={isMyProfile ? openCertificationModal : () => {}} 
+                  onViewStatsClick={isMyProfile ? openStatsModal : () => {}} 
+                  onStatClick={openDetailedStatsModal} 
               />
             </div>
           </div>
         )}
       </div>
       
-      {/* Modais Antigos (sem alteração, condicional em isMyProfile) */}
+      {/* Modais Antigos */}
       {isMyProfile && profileData && (
         <>
           <EditProfileModal isOpen={isEditModalOpen} onClose={closeEditModal} currentUser={profileData} onUpdateSuccess={handleUpdateSuccess} />

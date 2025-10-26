@@ -1,15 +1,28 @@
 // src/components/ProfileHeader.tsx
-// --- VERSÃO CORRIGIDA (Conecta com a API de Like) ---
+// --- VERSÃO FINAL (Usa as novas funções de Toggle e Segurança) ---
 
 import React, { useState, useRef, useEffect } from 'react';
-import api from '../services/api'; // Usaremos a 'api'
-import { Camera, Loader2, UserCheck, UserPlus, Heart } from 'lucide-react';
+import api from '../services/api'; 
+import { Camera, Loader2, UserCheck, UserPlus, Heart, MoreVertical, ShieldAlert, UserX } from 'lucide-react';
 import type { UserData } from '../types/types';
 
-// 1. Importando o hook de Autenticação (ainda necessário)
+// 1. Importando o hook de Autenticação
 import { useAuth } from '../contexts/AuthProvider';
-// 2. Importando as funções de Seguir (imports de Like removidos)
-import { followUser, unfollowUser } from '../services/interactionApi';
+// 2. Importando as novas funções corretas
+import { 
+  toggleFollowUser, 
+  toggleProfileLike, 
+  denounceUser, 
+  blockUser 
+} from '../services/interactionApi';
+// 3. Importando componentes do Dropdown (assumindo ShadCN/UI)
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from './ui/button'; 
 
 interface ProfileHeaderProps {
   user: UserData;
@@ -22,31 +35,36 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user, onEditClick, onCove
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const { user: loggedInUser } = useAuth(); // (Sem alteração)
+  const { user: loggedInUser, setUser: setLoggedInUser } = useAuth(); 
 
-  // 3. Estados para os botões (likeCount adicionado)
+  // 3. Estados para os botões
   const [isFollowed, setIsFollowed] = useState(false);
   const [isFollowLoading, setIsFollowLoading] = useState(false);
   
-  // O estado agora é inicializado com os dados que vêm do backend via props
   const [isLiked, setIsLiked] = useState(user.isLikedByMe || false);
   const [likeCount, setLikeCount] = useState(user.likeCount || 0);
   const [isLikeLoading, setIsLikeLoading] = useState(false);
 
-  // 4. Lógica para definir o estado inicial (corrigida)
+  // 4. ESTADOS para Bloquear
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [isBlockLoading, setIsBlockLoading] = useState(false);
+
+  // 5. Lógica para definir o estado inicial (lendo do usuário logado)
   useEffect(() => {
-    // Sincroniza o estado local com os dados do perfil carregado
-    // Isso garante que os botões resetem ao navegar para outro perfil
-    
-    // Lógica de Seguir (sem alteração, mas corrigida para evitar erro de 'any')
+    // Lógica de Seguir
     const alreadyFollowing = loggedInUser?.following?.some((f: any) => f.followingId === user.id) || false;
     setIsFollowed(alreadyFollowing);
 
-    // Lógica de Curtir (agora lê dos dados do perfil)
+    // Lógica de Curtir (lê dos dados do perfil)
     setIsLiked(user.isLikedByMe || false);
     setLikeCount(user.likeCount || 0);
+
+    // Lógica de Bloquear
+    const alreadyBlocked = loggedInUser?.blockedUsers?.some((b: any) => b.blockedUserId === user.id) || false;
+    setIsBlocked(alreadyBlocked);
     
-  }, [user.id, user.isLikedByMe, user.likeCount, loggedInUser]); // Depende do user.id e dos novos dados
+    // Dependências: Resetar quando o perfil (user.id) ou o usuário logado mudar
+  }, [user.id, user.isLikedByMe, user.likeCount, loggedInUser]);
   
   // --- Lógica de Upload de Capa (Sem alteração) ---
   const handleCoverUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -85,51 +103,93 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user, onEditClick, onCove
   };
   const membershipDuration = calculateMembershipDuration(user.createdAt);
 
-  // --- 5. FUNÇÕES DE TOGGLE ATUALIZADAS ---
+  // --- 6. FUNÇÕES DE TOGGLE ATUALIZADAS (Usando as funções da API) ---
   
-  // handleFollowToggle (Sem alteração)
   const handleFollowToggle = async () => {
     setIsFollowLoading(true);
     try {
-      if (isFollowed) {
-        await unfollowUser(user.id);
-        setIsFollowed(false);
-      } else {
-        await followUser(user.id);
-        setIsFollowed(true);
-      }
+      // Chama a função de TOGGLE (backend resolve se é follow ou unfollow)
+      const data = await toggleFollowUser(user.id);
+      setIsFollowed(data.isFollowing); // Atualiza o estado com a resposta do backend
     } catch (err) {
       console.error("Erro ao seguir/deseguir:", err);
+      // (Opcional: reverter o estado se houvesse atualização otimista)
     } finally {
       setIsFollowLoading(false);
     }
   };
   
-  // handleLikeToggle (CORRIGIDO)
   const handleLikeToggle = async () => {
-    if (isLikeLoading) return; // Previne cliques duplos
+    if (isLikeLoading) return;
     setIsLikeLoading(true);
 
-    // Atualização Otimista (a UI atualiza ANTES da resposta da API)
+    // Salva o estado atual para reverter em caso de erro
+    const originalState = { isLiked, likeCount };
+
+    // Atualização Otimista
     const newLikedState = !isLiked;
     const newLikeCount = newLikedState ? likeCount + 1 : likeCount - 1;
     setIsLiked(newLikedState);
     setLikeCount(newLikeCount);
 
     try {
-      // Chama a rota de "toggle" que criamos no backend
-      // Não precisamos mais de 'likeProfile' ou 'unlikeProfile'
-      await api.post(`/users/profile/${user.id}/like`);
+      // Chama a ROTA DE TOGGLE DE PERFIL
+      const data = await toggleProfileLike(user.id);
       
-      // Se a API funcionou, nosso estado otimista estava correto.
-      
+      // Sincroniza o estado com a resposta final do backend (mais seguro)
+      setIsLiked(data.isLikedByMe);
+      setLikeCount(data.likeCount);
+
     } catch (err) {
       console.error("Erro ao curtir/descurtir:", err);
-      // Se a API falhar, reverte o estado para o original
-      setIsLiked(!newLikedState);
-      setLikeCount(likeCount);
+      // Reverte o estado se a API falhar
+      setIsLiked(originalState.isLiked);
+      setLikeCount(originalState.likeCount);
     } finally {
       setIsLikeLoading(false);
+    }
+  };
+
+  // --- 7. FUNÇÕES (Denunciar e Bloquear) ---
+
+  const handleDenounceClick = async () => {
+    const reason = window.prompt("Por favor, descreva o motivo da denúncia (mínimo de 10 caracteres).");
+    
+    if (!reason || reason.trim().length < 10) {
+      if (reason !== null) { 
+        alert("A denúncia deve ter pelo menos 10 caracteres.");
+      }
+      return;
+    }
+
+    try {
+      await denounceUser(user.id, reason.trim());
+      alert("Denúncia enviada com sucesso. Nossa equipe irá analisar.");
+    } catch (error) {
+      console.error("Erro ao denunciar:", error);
+      alert("Não foi possível enviar a denúncia. Tente novamente.");
+    }
+  };
+
+  const handleBlockToggle = async () => {
+    setIsBlockLoading(true);
+    try {
+      const data = await blockUser(user.id); 
+      
+      setIsBlocked(data.isBlocked); 
+
+      // Atualiza o usuário logado no AuthContext
+      if (setLoggedInUser && loggedInUser) {
+        setLoggedInUser({ ...loggedInUser, blockedUsers: data.updatedBlockedList });
+      }
+
+      alert(data.isBlocked ? "Usuário bloqueado com sucesso." : "Usuário desbloqueado.");
+
+    } catch (error) {
+      console.error("Erro ao bloquear:", error);
+      alert("Não foi possível processar o bloqueio. Tente novamente.");
+    } finally {
+      setIsBlockLoading(false);
     }
   };
 
@@ -163,11 +223,11 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user, onEditClick, onCove
         )}
       </div>
 
-      {/* Bloco Principal do Header (Sem alteração, exceto o botão de Like) */}
+      {/* Bloco Principal do Header */}
       <div className="p-6 pt-0 -mt-16 sm:-mt-20 z-10 relative">
         <div className="flex flex-col sm:flex-row items-end sm:items-center gap-6">
           
-          {/* Avatar */}
+          {/* Avatar (Sem alteração) */}
           {fullProfileImageUrl ? (
             <img src={fullProfileImageUrl} alt={`Foto de ${user.name}`} className="w-32 h-32 rounded-full object-cover border-4 border-card flex-shrink-0" />
           ) : (
@@ -176,13 +236,13 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user, onEditClick, onCove
             </div>
           )}
           
-          {/* Nome e Localização */}
+          {/* Nome e Localização (Sem alteração) */}
           <div className="flex-grow pt-16 sm:pt-0 text-center sm:text-left">
             <h1 className="text-4xl font-bold">{user.name}</h1>
             {user.location && <p className="text-gray-400 mt-1">📍 {user.location}</p>}
           </div>
 
-          {/* --- 6. BLOCO DE BOTÕES ATUALIZADO --- */}
+          {/* --- 8. BLOCO DE BOTÕES ATUALIZADO (Com Dropdown) --- */}
           <div className="flex flex-col items-center sm:items-end gap-2 w-full sm:w-auto">
             
             {isMyProfile ? (
@@ -193,7 +253,7 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user, onEditClick, onCove
             ) : (
               // Se NÃO FOR o meu perfil
               <div className="flex gap-2 w-full sm:w-auto">
-                {/* Botão Seguir (Sem alteração) */}
+                {/* Botão Seguir (Usa handleFollowToggle) */}
                 <button
                   onClick={handleFollowToggle}
                   disabled={isFollowLoading}
@@ -209,7 +269,7 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user, onEditClick, onCove
                   <span>{isFollowed ? 'Seguindo' : 'Seguir'}</span>
                 </button>
                 
-                {/* Botão Curtir (Atualizado para mostrar a contagem) */}
+                {/* Botão Curtir (Usa handleLikeToggle) */}
                 <button
                   onClick={handleLikeToggle}
                   disabled={isLikeLoading}
@@ -222,21 +282,44 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user, onEditClick, onCove
                   `}
                 >
                   {isLikeLoading ? <Loader2 className="animate-spin w-5 h-5" /> : <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />}
-                  {/* O texto agora mostra a contagem! */}
                   <span>{likeCount}</span>
                 </button>
+
+                {/* Dropdown Denunciar/Bloquear */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="icon" className="h-10 w-10 border-gray-700 hover:bg-gray-700">
+                      <MoreVertical className="h-5 w-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="bg-card border-gray-700 text-white w-40">
+                    <DropdownMenuItem 
+                      className="flex gap-2 items-center cursor-pointer focus:bg-gray-700"
+                      onClick={handleDenounceClick}
+                    >
+                      <ShieldAlert className="w-4 h-4 text-yellow-500" />
+                      <span>Denunciar</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      className={`flex gap-2 items-center cursor-pointer focus:bg-gray-700 ${isBlocked ? 'focus:text-yellow-500' : 'focus:text-red-500'}`}
+                      onClick={handleBlockToggle}
+                      disabled={isBlockLoading}
+                    >
+                      <UserX className={`w-4 h-4 ${isBlocked ? 'text-yellow-500' : 'text-red-500'}`} />
+                      <span>{isBlocked ? 'Desbloquear' : 'Bloquear'}</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
               </div>
             )}
             
-            {/* Duração como membro (Sem alteração) */}
             <span className="text-xs text-gray-500">{membershipDuration}</span>
           </div>
-          {/* --- FIM DO BLOCO DE BOTÕES --- */}
-
         </div>
       </div>
     </div>
   );
 };
 
-export default ProfileHeader; 
+export default ProfileHeader;

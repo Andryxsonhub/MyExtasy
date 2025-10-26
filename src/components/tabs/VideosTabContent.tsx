@@ -1,14 +1,12 @@
-// src/components/tabs/VideosTabContent.tsx
-// --- CÓDIGO COMPLETO E CORRIGIDO (ESLint no-explicit-any) ---
+// src/components/tabs/VideosTabContent.tsx (VERSÃO FINAL COMPLETA - COM LIKES)
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, PlayCircle, Trash2, Loader2 } from 'lucide-react';
-import { deleteVideo } from '../../services/interactionApi'; // Verifique o caminho
+import { PlusCircle, PlayCircle, Trash2, Loader2, Heart } from 'lucide-react'; // <-- 1. IMPORTAR O ÍCONE
+import { deleteVideo, toggleVideoLike } from '../../services/interactionApi'; // <-- 2. IMPORTAR A FUNÇÃO DA API
 import type { Video } from '../../types/types';
 
 import FsLightbox from 'fslightbox-react';
-// Não precisa importar AxiosError aqui se deleteVideo já trata os erros
 
 interface VideosTabContentProps {
   videos: Video[];
@@ -19,12 +17,18 @@ interface VideosTabContentProps {
 
 const VideosTabContent: React.FC<VideosTabContentProps> = ({ videos, onAddVideoClick, isMyProfile, onDeleteSuccess }) => {
 
+  // 3. ESTADO LOCAL PARA ATUALIZAÇÃO OTIMISTA
+  const [localVideos, setLocalVideos] = useState<Video[]>(videos);
   const [lightboxController, setLightboxController] = useState({
     toggler: false,
     slide: 1
   });
-
   const [deletingVideoId, setDeletingVideoId] = useState<number | null>(null);
+
+  // Sincroniza o estado local se as props mudarem
+  useEffect(() => {
+    setLocalVideos(videos);
+  }, [videos]);
 
   function openLightboxOnSlide(number: number) {
     setLightboxController({
@@ -35,36 +39,56 @@ const VideosTabContent: React.FC<VideosTabContentProps> = ({ videos, onAddVideoC
 
   const handleDelete = async (videoId: number, event: React.MouseEvent) => {
     event.stopPropagation();
-
     if (!window.confirm("Tem certeza que deseja apagar este vídeo? Esta ação não pode ser desfeita.")) {
         return;
     }
-
     setDeletingVideoId(videoId);
     try {
         await deleteVideo(videoId);
         onDeleteSuccess(); // Notifica o pai
-    } catch (error: unknown) { // <-- CORRIGIDO: unknown
+    } catch (error: unknown) {
         console.error("Erro ao deletar vídeo (componente):", error);
-
-        // --- CORRIGIDO: Verificação de tipo ---
         let alertMessage = 'Tente novamente.';
         if (error instanceof Error) {
-            // Pega a mensagem do erro lançado pela função deleteVideo
             alertMessage = error.message;
         } else if (typeof error === 'string') {
-             alertMessage = error; // Menos comum, mas possível
+            alertMessage = error;
         }
-        // --- FIM DA CORREÇÃO ---
-
         alert(`Erro ao apagar vídeo: ${alertMessage}`);
     } finally {
         setDeletingVideoId(null);
     }
   };
 
+  // 4. FUNÇÃO PARA LIDAR COM O CLIQUE DE LIKE
+  const handleLikeClick = async (videoId: number) => {
+    const originalVideos = [...localVideos];
 
-  const videoUrls = videos.map(video => video.url);
+    // Atualização Otimista
+    setLocalVideos(prevVideos =>
+        prevVideos.map(video =>
+            video.id === videoId
+                ? {
+                    ...video,
+                    isLikedByMe: !video.isLikedByMe,
+                    likeCount: video.isLikedByMe
+                        ? video.likeCount - 1
+                        : video.likeCount + 1,
+                  }
+                : video
+        )
+    );
+
+    // Tenta enviar a requisição para o backend
+    try {
+        await toggleVideoLike(videoId);
+    } catch (error) {
+        alert("Erro ao processar a curtida. Tente novamente.");
+        setLocalVideos(originalVideos); // Reverte
+    }
+  };
+
+  const videoUrls = localVideos.map(video => video.url); // <-- Usar localVideos
 
   return (
     <div>
@@ -77,17 +101,22 @@ const VideosTabContent: React.FC<VideosTabContentProps> = ({ videos, onAddVideoC
         )}
       </div>
 
-      {videos.length > 0 ? (
+      {localVideos.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-          {videos.map((video, i) => (
+          {localVideos.map((video, i) => ( // <-- Usar localVideos
             <div
               key={video.id}
-              className="relative aspect-video bg-black rounded-lg overflow-hidden cursor-pointer group"
-              onClick={() => openLightboxOnSlide(i + 1)}
+              className="relative aspect-video bg-black rounded-lg overflow-hidden group"
             >
-              <div className="absolute inset-0 bg-black bg-opacity-30 group-hover:bg-opacity-50 transition-colors z-10"></div>
-              <PlayCircle className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 text-white opacity-70 group-hover:opacity-100 transition-opacity z-20 pointer-events-none" />
+              <div
+                className="w-full h-full cursor-pointer"
+                onClick={() => openLightboxOnSlide(i + 1)}
+              >
+                <div className="absolute inset-0 bg-black bg-opacity-30 group-hover:bg-opacity-50 transition-colors z-10"></div>
+                <PlayCircle className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 text-white opacity-70 group-hover:opacity-100 transition-opacity z-20 pointer-events-none" />
+              </div>
 
+              {/* BOTÃO DE DELETAR (só para meu perfil) */}
               {isMyProfile && (
                 <button
                   onClick={(e) => handleDelete(video.id, e)}
@@ -96,12 +125,27 @@ const VideosTabContent: React.FC<VideosTabContentProps> = ({ videos, onAddVideoC
                   aria-label="Apagar vídeo"
                 >
                   {deletingVideoId === video.id ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
-                      <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-4 h-4" />
                   )}
                 </button>
               )}
+
+              {/* 5. BOTÃO DE LIKE (para todos) */}
+              <button
+                  onClick={(e) => { e.stopPropagation(); handleLikeClick(video.id); }}
+                  className={`absolute bottom-2 left-2 p-1.5 bg-black bg-opacity-50 rounded-full text-white z-30 flex items-center gap-1.5 transition-all hover:bg-opacity-75
+                    ${video.isLikedByMe ? 'text-red-500' : 'text-white'}
+                  `}
+                  aria-label="Curtir vídeo"
+              >
+                  <Heart 
+                      size={18} 
+                      className={video.isLikedByMe ? "fill-current" : ""} 
+                  />
+                  <span className="text-sm font-semibold">{video.likeCount}</span>
+              </button>
             </div>
           ))}
         </div>

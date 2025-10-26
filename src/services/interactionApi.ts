@@ -1,191 +1,152 @@
-// src/services/interactionApi.ts
-// --- CÓDIGO FINALMENTE COMPLETO E CORRIGIDO (Tipo + ESLint) ---
+// src/services/interactionApi.ts (VERSÃO FINAL CORRIGIDA - 26/10/2025)
 
-import axios, { AxiosInstance, AxiosError } from 'axios'; // Importar AxiosInstance e AxiosError
-
-// -----------------------------------------------------------------
-// CONFIGURAÇÃO DA API
-// -----------------------------------------------------------------
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3333';
-
-const getAuthToken = () => {
-  const token = localStorage.getItem('authToken');
-  return token;
-};
-
-// Instância base para /api/interactions
-const apiClient = axios.create({
-  baseURL: `${API_URL}/api/interactions`,
-});
-
-apiClient.interceptors.request.use(
-  (config) => {
-    const token = getAuthToken();
-    if (token) {
-      config.headers['Authorization'] = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
-
-// Tipo correto para a instância
-let mainApiClientInstance: AxiosInstance | null = null;
-
-const getMainApiClient = async (): Promise<AxiosInstance> => { // Adicionado tipo de retorno Promise<AxiosInstance>
-    if (!mainApiClientInstance) {
-        try {
-            const apiModule = await import('../services/api');
-            mainApiClientInstance = apiModule.default; // Acessa a exportação padrão
-            if (!mainApiClientInstance || typeof mainApiClientInstance.delete !== 'function') { // Verifica se é uma instância válida
-                throw new Error("Importação de 'api' não retornou uma instância Axios válida.");
-            }
-        } catch(e) {
-            console.warn("Instância principal 'api' não encontrada ou falhou ao importar, usando apiClient de interactions para /users. Ajuste se necessário.", e);
-            // Fallback: Cria uma nova instância apontando para a raiz /api
-            mainApiClientInstance = axios.create({ baseURL: `${API_URL}/api` });
-            mainApiClientInstance.interceptors.request.use(
-              (config) => {
-                const token = getAuthToken();
-                if (token) {
-                  config.headers['Authorization'] = `Bearer ${token}`;
-                }
-                return config;
-              },
-              (error) => {
-                return Promise.reject(error);
-              }
-            );
-        }
-    }
-    // Garante que nunca retornará null aqui, pois criamos um fallback
-    if (!mainApiClientInstance) {
-         throw new Error("Falha crítica: Não foi possível obter uma instância da API.");
-    }
-    return mainApiClientInstance;
-}
-
-
-// -----------------------------------------------------------------
-// FUNÇÕES DA API (Like, Follow, Stats) - Com 'unknown' no catch
-// -----------------------------------------------------------------
-
-export const fetchMyStats = async () => {
-  try {
-    const { data } = await apiClient.get('/me/stats');
-    return data;
-  } catch (error: unknown) {
-    console.error('Erro ao buscar estatísticas:', error);
-    let errorMessage = 'Não foi possível carregar as estatísticas.';
-    if (axios.isAxiosError(error)) {
-        const axiosError = error as AxiosError<{ message?: string }>;
-        errorMessage = axiosError.response?.data?.message || axiosError.message;
-    } else if (error instanceof Error) {
-        errorMessage = error.message;
-    }
-    throw new Error(errorMessage);
-  }
-};
-
-export const followUser = async (userId: number | string) => {
-  try {
-    const { data } = await apiClient.post(`/${userId}/follow`);
-    return data;
-  } catch (error: unknown) {
-    console.error('Erro ao seguir usuário:', error);
-    let errorMessage = 'Erro ao seguir usuário.';
-    if (axios.isAxiosError(error)) {
-        const axiosError = error as AxiosError<{ error?: string }>;
-        errorMessage = axiosError.response?.data?.error || axiosError.message;
-    } else if (error instanceof Error) {
-        errorMessage = error.message;
-    }
-    throw new Error(errorMessage);
-  }
-};
-
-export const unfollowUser = async (userId: number | string) => {
-  try {
-    await apiClient.delete(`/${userId}/unfollow`);
-    return true;
-  } catch (error: unknown) {
-    console.error('Erro ao deixar de seguir usuário:', error);
-    let errorMessage = 'Erro ao deixar de seguir usuário.';
-     if (axios.isAxiosError(error)) {
-        const axiosError = error as AxiosError<{ error?: string }>;
-        errorMessage = axiosError.response?.data?.error || axiosError.message;
-    } else if (error instanceof Error) {
-        errorMessage = error.message;
-    }
-    throw new Error(errorMessage);
-  }
-};
-
-export const likeProfile = async (userId: number | string) => {
-  try {
-    const { data } = await apiClient.post(`/${userId}/like`);
-    return data;
-  } catch (error: unknown) {
-    console.error('Erro ao curtir perfil:', error);
-    let errorMessage = 'Erro ao curtir perfil.';
-     if (axios.isAxiosError(error)) {
-        const axiosError = error as AxiosError<{ error?: string }>;
-        errorMessage = axiosError.response?.data?.error || axiosError.message;
-    } else if (error instanceof Error) {
-        errorMessage = error.message;
-    }
-    throw new Error(errorMessage);
-  }
-};
-
-export const unlikeProfile = async (userId: number | string) => {
-  try {
-    await apiClient.delete(`/${userId}/unlike`);
-    return true;
-  } catch (error: unknown) {
-    console.error('Erro ao descurtir perfil:', error);
-    let errorMessage = 'Erro ao descurtir perfil.';
-     if (axios.isAxiosError(error)) {
-        const axiosError = error as AxiosError<{ error?: string }>;
-        errorMessage = axiosError.response?.data?.error || axiosError.message;
-    } else if (error instanceof Error) {
-        errorMessage = error.message;
-    }
-    throw new Error(errorMessage);
-  }
-};
-
+import api from './api'; // Importa sua instância principal do Axios
+import { AxiosError } from 'axios';
 
 /**
- * Deleta um vídeo do usuário logado.
- * @param videoId - O ID do vídeo a ser deletado.
+ * [EXISTENTE] Busca as estatísticas privadas do usuário logado.
+ * Rota: GET /api/interactions/me/stats
  */
-export const deleteVideo = async (videoId: number | string) => {
+export const fetchMyStats = async () => {
   try {
-    const api = await getMainApiClient(); // A função agora garante que retorna AxiosInstance
-    // DELETE /api/users/videos/:id
-    const response = await api.delete(`/users/videos/${videoId}`);
-
-    if (response.status === 200 || response.status === 204) {
-      console.log(`Vídeo ${videoId} deletado com sucesso.`);
-      return true; // Sucesso
-    } else {
-      console.error('Erro inesperado ao deletar vídeo:', response);
-      throw new Error(response.data?.message || 'Erro inesperado do servidor.');
-    }
-
+    const { data } = await api.get('/interactions/me/stats'); 
+    return data;
   } catch (error: unknown) {
-    console.error('Erro na chamada API para deletar vídeo:', error);
-    let errorMessage = 'Falha ao deletar vídeo.';
-    if (axios.isAxiosError(error)) {
-        const axiosError = error as AxiosError<{ message?: string }>;
-        errorMessage = axiosError.response?.data?.message || axiosError.message;
-    } else if (error instanceof Error) {
-        errorMessage = error.message;
+    console.error("Erro ao buscar estatísticas (serviço):", error);
+    let errorMessage = "Não foi possível buscar suas estatísticas.";
+    if (error instanceof AxiosError && error.response) {
+      errorMessage = error.response.data?.message || errorMessage;
     }
     throw new Error(errorMessage);
   }
+};
+
+/**
+ * [EXISTENTE] Tenta deletar um vídeo.
+ * Rota: DELETE /api/users/videos/:videoId (Esta rota está em 'userRoutes' ou 'mediaRoutes')
+ */
+export const deleteVideo = async (videoId: number) => {
+  try {
+    await api.delete(`/users/videos/${videoId}`); 
+  } catch (error: unknown) {
+    console.error("Erro ao deletar vídeo (serviço):", error);
+    let errorMessage = "Não foi possível apagar o vídeo. Tente novamente.";
+    if (error instanceof AxiosError && error.response) {
+      errorMessage = error.response.data?.message || errorMessage;
+    } else if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+    throw new Error(errorMessage);
+  }
+};
+
+/**
+ * [EXISTENTE] Curte/descurte uma foto (da galeria).
+ * Rota: POST /api/photos/:photoId/like (Esta rota está em 'mediaRoutes')
+ */
+export const togglePhotoLike = async (photoId: number) => {
+  try {
+    const { data } = await api.post(`/photos/${photoId}/like`);
+    return data;
+  } catch (error: unknown) {
+    console.error("Erro ao curtir/descurtir foto:", error);
+    if (error instanceof AxiosError && error.response) {
+       throw new Error(error.response.data?.message || "Não foi possível processar sua curtida na foto.");
+    }
+    throw new Error("Não foi possível processar sua curtida na foto.");
+  }
+};
+
+/**
+ * [EXISTENTE] Curte/descurte um vídeo (da galeria).
+ * Rota: POST /api/videos/:videoId/like (Esta rota está em 'mediaRoutes')
+ */
+export const toggleVideoLike = async (videoId: number) => {
+  try {
+    const { data } = await api.post(`/videos/${videoId}/like`);
+    return data;
+  } catch (error: unknown) {
+    console.error("Erro ao curtir/descurtir vídeo:", error);
+    if (error instanceof AxiosError && error.response) {
+       throw new Error(error.response.data?.message || "Não foi possível processar sua curtida no vídeo.");
+    }
+    throw new Error("Não foi possível processar sua curtida no vídeo.");
+  }
+};
+
+
+// ----------------------------------------------------
+// Funções que o ProfileHeader.tsx (Cabeçalho do Perfil) usa
+// ----------------------------------------------------
+
+/**
+ * [CORRIGIDO] Função para seguir/deixar de seguir (Toggle).
+ * Rota: POST /api/interactions/:userId/follow
+ */
+export const toggleFollowUser = async (userId: number) => {
+  try {
+    const { data } = await api.post(`/interactions/${userId}/follow`);
+    return data; // Retorna { isFollowing: boolean }
+  } catch (error: unknown) {
+    console.error("Erro ao seguir/deixar de seguir usuário:", error);
+    let errorMessage = "Não foi possível processar a ação.";
+    if (error instanceof AxiosError && error.response) {
+       errorMessage = error.response.data?.message || errorMessage;
+    }
+    throw new Error(errorMessage);
+  }
+};
+
+/**
+ * [NOVA] Função para curtir/descurtir um PERFIL (Toggle).
+ * Rota: POST /api/interactions/profile/:userId/like
+ */
+export const toggleProfileLike = async (userId: number) => {
+    try {
+      const { data } = await api.post(`/interactions/profile/${userId}/like`);
+      return data; // Retorna { isLikedByMe: boolean, likeCount: number }
+    } catch (error: unknown) {
+      console.error("Erro ao curtir/descurtir perfil:", error);
+      let errorMessage = "Não foi possível processar a curtida no perfil.";
+      if (error instanceof AxiosError && error.response) {
+         errorMessage = error.response.data?.message || errorMessage;
+      }
+      throw new Error(errorMessage);
+    }
+  };
+
+/**
+ * [NOVA - F03] Função para denunciar um usuário.
+ * Rota: POST /api/interactions/:userId/denounce
+ */
+export const denounceUser = async (userId: number, reason: string) => {
+    try {
+      const { data } = await api.post(`/interactions/${userId}/denounce`, { reason });
+      return data;
+    } catch (error: unknown) {
+      console.error("Erro ao denunciar usuário:", error);
+      let errorMessage = "Não foi possível enviar a denúncia.";
+      if (error instanceof AxiosError && error.response) {
+         errorMessage = error.response.data?.message || errorMessage;
+      }
+      throw new Error(errorMessage);
+    }
+  };
+  
+/**
+ * [NOVA - F04] Função para bloquear/desbloquear um usuário (Toggle).
+ * Rota: POST /api/interactions/:userId/block
+ */
+export const blockUser = async (userId: number) => {
+    try {
+      const { data } = await api.post(`/interactions/${userId}/block`);
+      return data; // Retorna { isBlocked: boolean, updatedBlockedList: [...] }
+    } catch (error: unknown) {
+      console.error("Erro ao bloquear/desbloquear usuário:", error);
+      let errorMessage = "Não foi possível processar o bloqueio.";
+      if (error instanceof AxiosError && error.response) {
+         errorMessage = error.response.data?.message || errorMessage;
+      }
+      throw new Error(errorMessage);
+    }
 };

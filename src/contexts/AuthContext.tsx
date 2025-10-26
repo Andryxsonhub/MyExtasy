@@ -1,26 +1,12 @@
-// src/contexts/AuthContext.ts (ATUALIZADO)
+// src/contexts/AuthContext.ts (VERSÃO FINAL CORRIGIDA)
 
 import { createContext } from 'react';
+// 1. Importa o tipo principal do seu 'types.ts'
+import type { AuthContextType } from '../types/types'; 
 
-export interface User {
-  id: number;
-  name: string;
-  email: string;
-  bio?: string | null;
-  profilePictureUrl?: string | null;
-  pimentaBalance: number;
-  username?: string;
-  displayName?: string;
-  photos?: Array<{ value: string }>;
-}
-
-export interface AuthContextType {
-  isLoggedIn: boolean;
-  setIsLoggedIn: (isLoggedIn: boolean) => void;
-  isLoading: boolean;
-  user: User | null;
-  setUser: (user: User | null) => void;
-  logout: () => void; // <-- ADICIONADO AQUI
-}
-
+/**
+ * Cria o Contexto.
+ * O tipo (AuthContextType) vem do types.ts e garante que o 'user'
+ * será do tipo UserData (com 'following' e 'blockedUsers').
+ */
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
