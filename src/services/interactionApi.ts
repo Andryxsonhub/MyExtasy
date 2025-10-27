@@ -1,15 +1,25 @@
-// src/services/interactionApi.ts (VERSÃO FINAL CORRIGIDA - 26/10/2025)
+// src/services/interactionApi.ts (VERSÃO FINAL REALMENTE COMPLETA)
 
-import api from './api'; // Importa sua instância principal do Axios
+import api from './api';
 import { AxiosError } from 'axios';
+import type { LikerUser } from '../types/types';
 
-/**
- * [EXISTENTE] Busca as estatísticas privadas do usuário logado.
- * Rota: GET /api/interactions/me/stats
- */
+interface LikeToggleResponse {
+  isLikedByMe: boolean;
+  likeCount: number;
+}
+interface FollowToggleResponse {
+  isFollowing: boolean;
+}
+interface BlockToggleResponse {
+  isBlocked: boolean;
+  updatedBlockedList: { blockedUserId: number }[];
+}
+
+/** Busca estatísticas privadas do usuário logado. */
 export const fetchMyStats = async () => {
   try {
-    const { data } = await api.get('/interactions/me/stats'); 
+    const { data } = await api.get('/interactions/me/stats');
     return data;
   } catch (error: unknown) {
     console.error("Erro ao buscar estatísticas (serviço):", error);
@@ -21,13 +31,10 @@ export const fetchMyStats = async () => {
   }
 };
 
-/**
- * [EXISTENTE] Tenta deletar um vídeo.
- * Rota: DELETE /api/users/videos/:videoId (Esta rota está em 'userRoutes' ou 'mediaRoutes')
- */
-export const deleteVideo = async (videoId: number) => {
+/** Deleta um vídeo. */
+export const deleteVideo = async (videoId: number): Promise<void> => { // Adicionado Promise<void>
   try {
-    await api.delete(`/users/videos/${videoId}`); 
+    await api.delete(`/users/videos/${videoId}`);
   } catch (error: unknown) {
     console.error("Erro ao deletar vídeo (serviço):", error);
     let errorMessage = "Não foi possível apagar o vídeo. Tente novamente.";
@@ -40,13 +47,10 @@ export const deleteVideo = async (videoId: number) => {
   }
 };
 
-/**
- * [EXISTENTE] Curte/descurte uma foto (da galeria).
- * Rota: POST /api/photos/:photoId/like (Esta rota está em 'mediaRoutes')
- */
-export const togglePhotoLike = async (photoId: number) => {
+/** Curte/descurte uma foto. */
+export const togglePhotoLike = async (photoId: number): Promise<LikeToggleResponse> => {
   try {
-    const { data } = await api.post(`/photos/${photoId}/like`);
+    const { data } = await api.post<LikeToggleResponse>(`/media/photos/${photoId}/like`);
     return data;
   } catch (error: unknown) {
     console.error("Erro ao curtir/descurtir foto:", error);
@@ -57,13 +61,10 @@ export const togglePhotoLike = async (photoId: number) => {
   }
 };
 
-/**
- * [EXISTENTE] Curte/descurte um vídeo (da galeria).
- * Rota: POST /api/videos/:videoId/like (Esta rota está em 'mediaRoutes')
- */
-export const toggleVideoLike = async (videoId: number) => {
+/** Curte/descurte um vídeo. */
+export const toggleVideoLike = async (videoId: number): Promise<LikeToggleResponse> => {
   try {
-    const { data } = await api.post(`/videos/${videoId}/like`);
+    const { data } = await api.post<LikeToggleResponse>(`/media/videos/${videoId}/like`);
     return data;
   } catch (error: unknown) {
     console.error("Erro ao curtir/descurtir vídeo:", error);
@@ -74,19 +75,11 @@ export const toggleVideoLike = async (videoId: number) => {
   }
 };
 
-
-// ----------------------------------------------------
-// Funções que o ProfileHeader.tsx (Cabeçalho do Perfil) usa
-// ----------------------------------------------------
-
-/**
- * [CORRIGIDO] Função para seguir/deixar de seguir (Toggle).
- * Rota: POST /api/interactions/:userId/follow
- */
-export const toggleFollowUser = async (userId: number) => {
+/** Segue/deixa de seguir um usuário. */
+export const toggleFollowUser = async (userId: number): Promise<FollowToggleResponse> => {
   try {
-    const { data } = await api.post(`/interactions/${userId}/follow`);
-    return data; // Retorna { isFollowing: boolean }
+    const { data } = await api.post<FollowToggleResponse>(`/interactions/${userId}/follow`);
+    return data;
   } catch (error: unknown) {
     console.error("Erro ao seguir/deixar de seguir usuário:", error);
     let errorMessage = "Não foi possível processar a ação.";
@@ -97,14 +90,11 @@ export const toggleFollowUser = async (userId: number) => {
   }
 };
 
-/**
- * [NOVA] Função para curtir/descurtir um PERFIL (Toggle).
- * Rota: POST /api/interactions/profile/:userId/like
- */
-export const toggleProfileLike = async (userId: number) => {
+/** Curte/descurte um perfil. */
+export const toggleProfileLike = async (userId: number): Promise<LikeToggleResponse> => {
     try {
-      const { data } = await api.post(`/interactions/profile/${userId}/like`);
-      return data; // Retorna { isLikedByMe: boolean, likeCount: number }
+      const { data } = await api.post<LikeToggleResponse>(`/interactions/profile/${userId}/like`);
+      return data;
     } catch (error: unknown) {
       console.error("Erro ao curtir/descurtir perfil:", error);
       let errorMessage = "Não foi possível processar a curtida no perfil.";
@@ -115,13 +105,10 @@ export const toggleProfileLike = async (userId: number) => {
     }
   };
 
-/**
- * [NOVA - F03] Função para denunciar um usuário.
- * Rota: POST /api/interactions/:userId/denounce
- */
-export const denounceUser = async (userId: number, reason: string) => {
+/** Denuncia um usuário. */
+export const denounceUser = async (userId: number, reason: string): Promise<{ message: string }> => { // Adicionado tipo de retorno
     try {
-      const { data } = await api.post(`/interactions/${userId}/denounce`, { reason });
+      const { data } = await api.post<{ message: string }>(`/interactions/${userId}/denounce`, { reason });
       return data;
     } catch (error: unknown) {
       console.error("Erro ao denunciar usuário:", error);
@@ -132,15 +119,12 @@ export const denounceUser = async (userId: number, reason: string) => {
       throw new Error(errorMessage);
     }
   };
-  
-/**
- * [NOVA - F04] Função para bloquear/desbloquear um usuário (Toggle).
- * Rota: POST /api/interactions/:userId/block
- */
-export const blockUser = async (userId: number) => {
+
+/** Bloqueia/desbloqueia um usuário. */
+export const blockUser = async (userId: number): Promise<BlockToggleResponse> => {
     try {
-      const { data } = await api.post(`/interactions/${userId}/block`);
-      return data; // Retorna { isBlocked: boolean, updatedBlockedList: [...] }
+      const { data } = await api.post<BlockToggleResponse>(`/interactions/${userId}/block`);
+      return data;
     } catch (error: unknown) {
       console.error("Erro ao bloquear/desbloquear usuário:", error);
       let errorMessage = "Não foi possível processar o bloqueio.";
@@ -149,4 +133,34 @@ export const blockUser = async (userId: number) => {
       }
       throw new Error(errorMessage);
     }
+};
+
+/** Busca a lista de usuários que curtiram uma foto. */
+export const getPhotoLikers = async (photoId: number): Promise<LikerUser[]> => {
+  try {
+    const { data } = await api.get<LikerUser[]>(`/media/photos/${photoId}/likers`);
+    return data; // <-- RETURN ESTAVA FALTANDO
+  } catch (error: unknown) {
+    console.error(`Erro ao buscar likers da foto ${photoId}:`, error);
+    let errorMessage = "Não foi possível buscar quem curtiu.";
+    if (error instanceof AxiosError && error.response) {
+       errorMessage = error.response.data?.message || errorMessage;
+    }
+    throw new Error(errorMessage);
+  }
+};
+
+/** Busca a lista de usuários que curtiram um vídeo. */
+export const getVideoLikers = async (videoId: number): Promise<LikerUser[]> => {
+  try {
+    const { data } = await api.get<LikerUser[]>(`/media/videos/${videoId}/likers`);
+    return data; // <-- RETURN ESTAVA FALTANDO
+  } catch (error: unknown) {
+    console.error(`Erro ao buscar likers do vídeo ${videoId}:`, error);
+    let errorMessage = "Não foi possível buscar quem curtiu.";
+    if (error instanceof AxiosError && error.response) {
+       errorMessage = error.response.data?.message || errorMessage;
+    }
+    throw new Error(errorMessage);
+  }
 };

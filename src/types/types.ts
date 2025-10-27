@@ -1,88 +1,96 @@
-// src/types/types.ts (VERSÃO FINAL COMPLETA - Com logout)
-
 import { ReactNode } from 'react';
 
-// Para provedores e rotas protegidas
-export interface ChildrenProps {
-  children: ReactNode;
+// Tipos AuthContextType, MonthlyStats, UserData
+export interface AuthContextType { 
+    isLoggedIn: boolean; 
+    setIsLoggedIn: (isLoggedIn: boolean) => void; 
+    isLoading: boolean; 
+    user: UserData | null; 
+    setUser: (user: UserData | null) => void; 
+    logout: () => void; 
+}
+export interface MonthlyStats { 
+    visits: number; 
+    commentsReceived: number; 
+    commentsMade: number; 
+    likesReceived: number; 
+    followers: number; 
+    following?: number; 
+}
+export interface UserData { 
+    id: number; 
+    name: string; 
+    email: string; 
+    username: string | null; 
+    bio: string | null; 
+    profilePictureUrl: string | null; 
+    coverPhotoUrl: string | null; 
+    location: string | null; 
+    gender: string | null; 
+    createdAt: string; 
+    lastSeenAt: string | null; 
+    pimentaBalance?: number; 
+    interests: string | null; 
+    desires: string | null; 
+    fetishes: string | null; 
+    certificationLevel?: number; 
+    monthlyStats?: MonthlyStats; 
+    following?: { followingId: number }[]; 
+    blockedUsers?: { blockedUserId: number }[]; 
+    likesGiven?: { likedUserId: number }[]; 
+    likeCount?: number; 
+    isLikedByMe?: boolean; 
 }
 
-// Para o Contexto de Autenticação
-export interface AuthContextType {
-  isLoggedIn: boolean;
-  setIsLoggedIn: (isLoggedIn: boolean) => void;
-  isLoading: boolean;
-  user: UserData | null;
-  setUser: (user: UserData | null) => void;
-  logout: () => void; // <--- CORREÇÃO: ADICIONADO AQUI
+// Tipo Post (para posts de texto)
+export interface Post { 
+    id: number; 
+    content: string; 
+    createdAt: string; 
+    author: { name: string; profilePictureUrl?: string | null; }; 
 }
 
-// Para as estatísticas do Sidebar
-export interface MonthlyStats {
-  visits: number;
-  commentsReceived: number;
-  commentsMade: number;
-  likesReceived: number;
-  followers: number;
-  following?: number;
+// Tipos Photo e Video (Podem ser removidos se o MediaFeedItem for o único usado, mas mantidos por enquanto)
+export interface Photo { 
+    id: number; 
+    url: string; 
+    description: string | null; 
+    createdAt: string; 
+    likeCount: number; 
+    isLikedByMe: boolean; 
+}
+export interface Video { 
+    id: number; 
+    url: string; 
+    description: string | null; 
+    createdAt: string; 
+    likeCount: number; 
+    isLikedByMe: boolean; 
 }
 
-// O tipo principal para os dados do usuário
-export interface UserData {
-  id: number;
-  name: string;
-  email: string;
-  username: string | null;
-  bio: string | null;
-  profilePictureUrl: string | null;
-  coverPhotoUrl: string | null;
-  location: string | null;
-  gender: string | null;
-  createdAt: string;
-  lastSeenAt: string | null;
-  pimentaBalance?: number;
-  interests: string | null;
-  desires: string | null;
-  fetishes: string | null;
-  certificationLevel?: number;
-  monthlyStats?: MonthlyStats;
-  
-  // Campos de interação
-  following?: { followingId: number }[];
-  blockedUsers?: { blockedUserId: number }[]; 
-  likesGiven?: { likedUserId: number }[];
-  
-  // Campos de like (no perfil)
-  likeCount?: number;
-  isLikedByMe?: boolean;
+// Tipo MediaFeedItem (CORRIGIDO com thumbnail_url)
+export interface MediaFeedItem { 
+    id: number; 
+    media_type: 'photo' | 'video'; 
+    media_url: string; 
+    // PROPRIEDADE ADICIONADA:
+    thumbnail_url?: string; // Para a imagem de capa de vídeos
+    content: string | null; 
+    createdAt: string; 
+    // Esta é a propriedade que corrigimos no ContentCard (post.author)
+    author: { id: number; name: string; profilePictureUrl: string | null; }; 
+    likeCount: number; 
+    isLikedByMe: boolean; 
 }
 
-// Para a lista de posts
-export interface Post {
-  id: number;
-  content: string;
-  createdAt: string;
-  author: {
-    name: string;
-    profilePictureUrl?: string | null;
-  };
+// --- NOVO TIPO ---
+// Para a lista de usuários que curtiram (Likers)
+export interface LikerUser {
+  id: number;
+  name: string;
+  profilePictureUrl: string | null;
 }
+// --- FIM DO NOVO TIPO ---
 
-// Para a galeria de mídia
-export interface Photo {
-  id: number;
-  url: string;
-  description: string | null;
-  createdAt: string;
-  likeCount: number;
-  isLikedByMe: boolean;
-}
-
-export interface Video {
-  id: number;
-  url: string;
-  description: string | null;
-  createdAt: string;
-  likeCount: number;
-  isLikedByMe: boolean;
-}
+// Outras interfaces
+export interface ChildrenProps { children: ReactNode; }

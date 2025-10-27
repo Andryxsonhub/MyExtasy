@@ -1,59 +1,131 @@
-// src/components/ContentCard.tsx
-
-// AVISO CORRIGIDO: O comentário abaixo instrui o ESLint a ignorar o ícone não utilizado.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { Heart, UserCircle2 } from 'lucide-react';
-import React from 'react';
-import { Link } from 'react-router-dom';
-import LikeButton from './LikeButton';
-
-// A interface do Post deve ser a mesma do Explorar.tsx
-export interface Post {
-  id: number;
-  userid: number;
-  media_type: 'image' | 'video';
-  media_url: string;
-  author_name: string;
-  author_avatar_url: string | null;
-  likes_count: number;
-}
+import React, { useState } from 'react';
+// CORREÇÃO: Importação do Link para resolver o erro ts(2304)
+import { Link } from 'react-router-dom'; 
+import { Heart, PlayCircle, User } from 'lucide-react';
+import type { MediaFeedItem, LikerUser } from '../types/types';
+import { getPhotoLikers, getVideoLikers } from '../services/interactionApi';
+import LikersModal from './LikersModal';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 
 interface ContentCardProps {
-  post: Post;
-  onLike: () => void;
+  post: MediaFeedItem;
+  onLike: (id: number, type: 'photo' | 'video') => void;
 }
 
 const ContentCard: React.FC<ContentCardProps> = ({ post, onLike }) => {
-  return (
-    <div className="group relative aspect-square w-full bg-zinc-800 rounded-lg overflow-hidden shadow-lg transform transition-transform duration-300 hover:scale-105">
-      {/* Media: Imagem ou Vídeo */}
-      {post.media_type === 'image' ? (
-        <img src={post.media_url} alt={`Post de ${post.author_name}`} className="w-full h-full object-cover" />
-      ) : (
-        <video src={post.media_url} className="w-full h-full object-cover" controls muted loop />
-      )}
+  // --- ESTADO PARA O MODAL ---
+  const [isLikersModalOpen, setIsLikersModalOpen] = useState(false);
+  const [likersList, setLikersList] = useState<LikerUser[] | null>(null);
+  const [isLoadingLikers, setIsLoadingLikers] = useState(false);
 
-      {/* Overlay que aparece no hover */}
-      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-opacity duration-300" />
+  const handleLikeClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    onLike(post.id, post.media_type);
+  };
 
-      {/* Informações do Usuário com Link */}
-      <Link to={`/profile/${post.userid}`} className="absolute top-2 left-2">
-        <div className="flex items-center space-x-2 bg-black/50 p-1 rounded-full">
-          {post.author_avatar_url ? (
-            <img src={post.author_avatar_url} alt={post.author_name} className="w-6 h-6 rounded-full object-cover" />
-          ) : (
-            <UserCircle2 className="w-6 h-6 text-white" />
-          )}
-          <span className="text-white text-sm font-semibold">{post.author_name}</span>
-        </div>
-      </Link>
+  // --- FUNÇÃO PARA ABRIR O MODAL ---
+  const handleLikersClick = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (!post.likeCount || post.likeCount <= 0) return; 
 
-      {/* Curtidas (usando o LikeButton) */}
-      <div className="absolute bottom-2 right-2">
-        <LikeButton likes={post.likes_count} onLike={onLike} />
-      </div>
-    </div>
-  );
+    setIsLoadingLikers(true);
+    setIsLikersModalOpen(true);
+    setLikersList(null); 
+
+    try {
+      let likers: LikerUser[];
+      if (post.media_type === 'photo') {
+        likers = await getPhotoLikers(post.id);
+      } else {
+        likers = await getVideoLikers(post.id);
+      }
+      setLikersList(likers);
+    } catch (error) {
+      console.error("Erro ao buscar likers:", error);
+    } finally {
+      setIsLoadingLikers(false);
+    }
+  };
+
+  const closeModal = () => setIsLikersModalOpen(false);
+
+  return (
+    <>
+      <Link 
+        to={`/${post.media_type}/${post.id}`} 
+        className="group block rounded-lg overflow-hidden shadow-lg hover:shadow-primary/50 transition-shadow duration-300"
+      >
+        <div className="relative aspect-square w-full bg-zinc-800">
+                
+          {/* ======================================================= 
+                [MÍDIA e OVERLAY]
+            ======================================================= */}
+            {post.media_type === 'photo' ? (
+                <img 
+                    src={post.media_url} 
+                    alt={`Mídia de ${post.author.name}`}
+                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                />
+            ) : (
+                <div className="w-full h-full flex items-center justify-center bg-black/80">
+                    <img 
+                        src={post.thumbnail_url || post.media_url} 
+                        alt={`Thumbnail de ${post.author.name}`}
+                        className="w-full h-full object-cover opacity-70"
+                    />
+                    <PlayCircle size={64} className="absolute text-white/90 group-hover:text-primary transition-colors" />
+                </div>
+            )}
+
+            {/* ======================================================= 
+                [INFORMAÇÕES DO USUÁRIO]
+            ======================================================= */}
+            <div className="absolute top-2 left-2 z-10 flex items-center gap-2 bg-black bg-opacity-50 rounded-full pr-3 py-1">
+                <Avatar className="w-8 h-8">
+                    <AvatarImage src={post.author.profilePictureUrl || undefined} alt={post.author.name} /> 
+                    <AvatarFallback>
+                        <User className="w-4 h-4 text-white" />
+                    </AvatarFallback>
+                </Avatar>
+                <span className="text-sm font-semibold text-white truncate max-w-[100px]">{post.author.name}</span>
+            </div>
+
+            {/* --- ÁREA DE LIKE ATUALIZADA --- */}
+            <div className="absolute bottom-2 right-2 z-10 flex items-center gap-1.5 bg-black bg-opacity-50 rounded-full p-1.5">
+                {/* Botão Ícone Like */}
+                <button
+                    onClick={handleLikeClick}
+                    className={`text-white transition-colors ${post.isLikedByMe ? 'text-red-500' : 'hover:text-gray-300'}`}
+                    aria-label="Curtir mídia"
+                >
+                    <Heart size={18} className={post.isLikedByMe ? "fill-current" : ""} />
+                </button>
+                {/* Contagem Clicável */}
+                <button
+                    onClick={handleLikersClick}
+                    className={`text-sm font-semibold text-white ${post.likeCount > 0 ? 'cursor-pointer hover:underline' : 'cursor-default'}`}
+                    disabled={!post.likeCount || post.likeCount <= 0 || isLoadingLikers}
+                    aria-label="Ver quem curtiu"
+                >
+                    {Number(post.likeCount) || 0}
+                </button>
+            </div>
+            {/* --- FIM DA ÁREA DE LIKE --- */}
+        </div>
+      </Link>
+
+      {/* Renderiza o Modal */}
+      <LikersModal
+        isOpen={isLikersModalOpen}
+        onClose={closeModal}
+        likers={likersList}
+        isLoading={isLoadingLikers}
+        title={`Curtidas em ${post.media_type === 'photo' ? 'Foto' : 'Vídeo'}`}
+      />
+    </>
+  );
 };
 
 export default ContentCard;

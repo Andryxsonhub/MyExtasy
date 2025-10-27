@@ -1,10 +1,7 @@
-// src/pages/LivePage.tsx
-// --- VERSÃO CORRIGIDA PARA LAYOUT MOBILE FIXO ---
-
 import React, { useState, useEffect, FormEvent, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '@/services/api';
-// [CORREÇÃO 1]: Layout foi removido, pois o Header já é fixo e o Layout
+// Layout foi removido, pois o Header já é fixo e o Layout
 // estava potencialmente causando scroll duplo ou padding indesejado.
 // import Layout from '@/components/Layout'; 
 import { useAuth } from '@/contexts/AuthProvider';
@@ -64,8 +61,6 @@ interface ChatMessage {
 }
 
 const LiveContent: React.FC = () => {
-    const room = useRoomContext();
-    // Hooks e Estados do Chat
     const { roomName } = useParams<{ roomName: string }>();
     const { user } = useAuth();
     const [socket, setSocket] = useState<Socket | null>(null);
@@ -74,7 +69,7 @@ const LiveContent: React.FC = () => {
     const chatContainerRef = useRef<HTMLDivElement>(null);
 
     // Conecta ao Socket.IO
-    useEffect(() => { /* ...código do socket... */
+    useEffect(() => {
         if (user && roomName) {
             const newSocket = io(import.meta.env.VITE_API_URL || 'http://localhost:3333');
             setSocket(newSocket);
@@ -85,7 +80,7 @@ const LiveContent: React.FC = () => {
     }, [user, roomName]);
 
     // Ouve mensagens do chat
-    useEffect(() => { /* ...código do listener... */
+    useEffect(() => {
         if (socket) {
             const handleNewMessage = (msg: ChatMessage) => {
                 setMessages(prevMessages => [...prevMessages, msg]);
@@ -96,14 +91,14 @@ const LiveContent: React.FC = () => {
     }, [socket]);
 
     // Auto-scroll
-    useEffect(() => { /* ...código do scroll... */
+    useEffect(() => {
         if (chatContainerRef.current) {
             chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
         }
     }, [messages]);
 
     // Envia mensagem
-    const handleSendMessage = (e: FormEvent) => { /* ...código de envio... */
+    const handleSendMessage = (e: FormEvent) => {
         e.preventDefault();
         if (inputValue.trim() && user && socket && roomName) {
             const messageData: ChatMessage = {
@@ -123,31 +118,30 @@ const LiveContent: React.FC = () => {
         <div className="flex flex-col md:flex-row h-full bg-black text-white overflow-hidden">
             
             {/* ============================================================
-                [CORREÇÃO 4 - VÍDEO]:
-                - 'h-1/2' foi trocado por 'aspect-video' para dar uma proporção 16:9 fixa.
-                - 'flex-shrink-0' foi adicionado para ele não encolher.
-                - 'md:aspect-auto' restaura o comportamento antigo em desktop.
-            ============================================================
-            */}
+                [PLAYER - CORRIGIDO PARA MOBILE]
+                - 'aspect-video' garante que a Live tenha uma proporção 16:9 no mobile,
+                  liberando espaço para o chat abaixo.
+                - 'flex-shrink-0' impede que o vídeo seja esmagado.
+            ============================================================ */}
             <div className="w-full aspect-video flex-shrink-0 md:h-full md:flex-grow md:aspect-auto bg-black">
                 <LiveLayout /> {/* Renderiza o player */}
             </div>
 
             {/* ============================================================
-                [CORREÇÃO 5 - CHAT]:
-                - 'h-1/2' foi trocado por 'flex-1' (ocupa o resto do espaço)
-                - 'min-h-0' foi ADICIONADO (essencial para o overflow funcionar no flex-1)
-                - 'md:flex-none' e 'md:min-h-full' restauram o layout desktop.
-            ============================================================
-            */}
+                [CHAT - CORRIGIDO PARA MOBILE]
+                - 'flex-1' faz o chat ocupar o espaço restante (abaixo do vídeo).
+                - 'min-h-0' é crucial para permitir que o 'overflow' do chat-body funcione.
+            ============================================================ */}
             <div className="w-full flex-1 min-h-0 md:min-h-full md:h-full md:flex-none md:w-80 lg:w-96 bg-gray-900 flex flex-col flex-shrink-0 border-l border-gray-700">
-                {/* Cabeçalho */}
+                
+                {/* Cabeçalho (Fixo) */}
                 <div className="p-4 border-b border-gray-700 flex-shrink-0">
                     <h2 className="text-xl font-semibold text-white">Chat ao Vivo</h2>
                 </div>
-                {/* Mensagens (Esta área agora rola independentemente) */}
+
+                {/* Mensagens (Área de Scroll - FLEX-GROW) */}
                 <div ref={chatContainerRef} className="flex-grow p-4 space-y-3 overflow-y-auto min-h-0">
-                    {messages.map((msg) => ( /* ... Mapeamento das mensagens ... */
+                    {messages.map((msg) => (
                         <div key={msg.id} className="flex items-start gap-2.5 text-sm">
                             <span className={`font-semibold flex-shrink-0 ${user && msg.user.id === user.id ? 'text-green-400' : 'text-blue-400'}`}>
                                 {user && msg.user.id === user.id ? 'Você' : msg.user.name || 'Anônimo'}:
@@ -156,16 +150,19 @@ const LiveContent: React.FC = () => {
                         </div>
                     ))}
                 </div>
-                {/* Rodapé (Input de texto) */}
+
+                {/* Rodapé (Input de texto - Fixo) */}
                 <div className="p-4 border-t border-gray-700 flex-shrink-0 bg-gray-800">
-                    {/* Saldo */}
+                    
+                    {/* Saldo (Exemplo de elemento fixo) */}
                     <div className="flex items-center justify-end text-xs text-yellow-500 mb-2">
                         <Flame className="w-3 h-3 mr-1" />
                         <span className="text-gray-400">Saldo:</span>
                         <span className="font-bold ml-1">{user?.pimentaBalance ?? 0}</span>
                     </div>
-                    {/* Formulário */}
-                    <form onSubmit={handleSendMessage} className="flex gap-2"> {/* ... Formulário do chat ... */ }
+
+                    {/* Formulário (Fixo) */}
+                    <form onSubmit={handleSendMessage} className="flex gap-2">
                         <input
                             type="text"
                             placeholder={user ? "Sua mensagem..." : "Autenticando..."}
@@ -224,15 +221,19 @@ const LivePage: React.FC = () => {
     const handleDisconnected = async () => {
         console.log("LiveKitRoom desconectado...");
         try {
-            await api.post('/lives/stop');
-            console.log("Informado backend sobre a parada da live (ou tentativa).");
+            // Se o usuário era o host, informa o backend para parar a live
+            const { data: userData } = await api.get('/auth/user'); 
+            if (userData.isHost) { // Supondo que você tem uma flag isHost no perfil do usuário
+                 await api.post('/lives/stop');
+                 console.log("Informado backend sobre a parada da live (pelo host).");
+            }
         } catch(error) {
             console.warn("Chamada para /lives/stop falhou ou não era necessária:", error);
         } finally {
             navigate('/lives');
         }
     };
-
+    
     // Função onError
     const handleLiveKitError = (error: Error) => {
         console.error("[LiveKitRoom ERROR] Erro durante a conexão:", error);
@@ -242,8 +243,6 @@ const LivePage: React.FC = () => {
     // Renderiza loading
     if (!token || !wsUrl) {
         return (
-            // [CORREÇÃO 2]: Layout removido. Adicionado 'pt-16' (64px) para 
-            // não ficar atrás do Header fixo.
             <div className="flex justify-center items-center h-screen pt-16 bg-background text-white">
                 Conectando à live...
             </div>
@@ -252,18 +251,15 @@ const LivePage: React.FC = () => {
 
     // Renderiza a LiveKitRoom
     return (
-        // [CORREÇÃO 3]: 
-        // - <Layout> removido.
-        // - style trocado para 'height: 100vh' para preencher a tela inteira.
-        // - className="pt-16" (64px) adicionado para o conteúdo 
-        //   começar ABAIXO do Header fixo.
         <LiveKitRoom
             video={true}
             audio={true}
             token={token}
             serverUrl={wsUrl}
             data-lk-theme="default"
+            // Garante que a LiveRoom ocupe 100% da altura da tela.
             style={{ height: '100vh' }} 
+            // Adiciona padding no topo para começar abaixo do header fixo.
             className="pt-16" 
             onDisconnected={handleDisconnected}
             onError={handleLiveKitError}
