@@ -1,5 +1,3 @@
-// src/components/registration/InterestStep.tsx
-
 import React, { useState } from 'react';
 import type { FormData } from './RegistrationFlow';
 
@@ -8,15 +6,16 @@ interface Props {
   onBack: () => void;
 }
 
+// CORREÇÃO: Substituindo URLs do Unsplash por placeholders do placehold.co
 const interestOptions = [
-    { id: 'homem', label: 'Homem', imageUrl: 'https://images.unsplash.com/photo-1581023473111-a75b2a59a7a8?w=500' },
-    { id: 'mulher', label: 'Mulher', imageUrl: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=500' },
-    { id: 'casal_he', label: 'Casal (Ele/Ela)', imageUrl: 'https://images.unsplash.com/photo-1590422229560-6d4c4b5f9f9e?w=500' },
-    { id: 'casal_hh', label: 'Casal (Ele/Ele)', imageUrl: 'https://images.unsplash.com/photo-1542451361-b5c658796114?w=500' },
-    { id: 'casal_mm', label: 'Casal (Ela/Ela)', imageUrl: 'https://images.unsplash.com/photo-1526413232644-8a40f03cc03b?w=500' },
-    { id: 'transexual', label: 'Transexual', imageUrl: 'https://images.unsplash.com/photo-1620321023374-1a2d14a1a3b1?w=500' },
-    { id: 'crossdresser', label: 'Crossdresser (CD)', imageUrl: 'https://images.unsplash.com/photo-1593106578502-27fa83a5c1a1?w=500' },
-    { id: 'travesti', label: 'Travesti', imageUrl: 'https://images.unsplash.com/photo-1587844204-624389a3a31c?w=500' },
+    { id: 'homem', label: 'Homem', imageUrl: 'https://myextasyclub-14102025.s3.sa-east-1.amazonaws.com/cadastro-interesses/Homem.png' },
+    { id: 'mulher', label: 'Mulher', imageUrl: 'https://myextasyclub-14102025.s3.sa-east-1.amazonaws.com/cadastro-interesses/Mulher.png' }, // Mantive a da mulher se estiver boa, senão troque
+    { id: 'casal_he', label: 'Casal (Ele/Ela)', imageUrl: 'https://myextasyclub-14102025.s3.sa-east-1.amazonaws.com/cadastro-interesses/Ele-Ela.png' },
+    { id: 'casal_hh', label: 'Casal (Ele/Ele)', imageUrl: 'https://myextasyclub-14102025.s3.sa-east-1.amazonaws.com/cadastro-interesses/Ele-Ele.png' },
+    { id: 'casal_mm', label: 'Casal (Ela/Ela)', imageUrl: 'https://myextasyclub-14102025.s3.sa-east-1.amazonaws.com/cadastro-interesses/Ela-Ela.png' }, // Mantive esta se estiver boa, senão troque
+    { id: 'transexual', label: 'Transexual', imageUrl: 'https://myextasyclub-14102025.s3.sa-east-1.amazonaws.com/cadastro-interesses/Transexual.jfif' },
+    { id: 'crossdresser', label: 'Crossdresser (CD)', imageUrl: 'https://myextasyclub-14102025.s3.sa-east-1.amazonaws.com/cadastro-interesses/Crossdresser.jpg' },
+    { id: 'travesti', label: 'Travesti', imageUrl: 'https://myextasyclub-14102025.s3.sa-east-1.amazonaws.com/cadastro-interesses/Travesti.png' },
 ];
 
 const InterestStep: React.FC<Props> = ({ onNext, onBack }) => {
@@ -31,8 +30,7 @@ const InterestStep: React.FC<Props> = ({ onNext, onBack }) => {
   };
 
   return (
-    <div className="w-full max-w-lg mx-auto">
-        {/* ALTERAÇÃO 1: Botão de seta que ficava aqui foi REMOVIDO */}
+    <div className="w-full max-w-lg mx-auto px-4"> {/* Adicionado padding horizontal */}
         <div className="text-center mb-8">
             <p className="text-sm font-semibold text-gray-400 uppercase">A PREPARAR O SEU PERFIL</p>
             <h1 className="text-2xl font-bold text-white mt-1">Você tem interesse em:</h1>
@@ -42,28 +40,38 @@ const InterestStep: React.FC<Props> = ({ onNext, onBack }) => {
             <div
                 key={option.id}
                 onClick={() => handleSelect(option.id)}
-                className={`relative rounded-lg overflow-hidden cursor-pointer border-4 transition-all duration-300 ${selectedInterests.includes(option.id) ? 'border-pink-500' : 'border-transparent'}`}
+                className={`relative rounded-lg overflow-hidden cursor-pointer border-4 transition-all duration-300 ${selectedInterests.includes(option.id) ? 'border-pink-500 ring-2 ring-pink-500' : 'border-transparent hover:border-gray-500'}`} // Melhor feedback visual
             >
-                <img src={option.imageUrl} alt={option.label} className="w-full h-40 object-cover" />
-                <div className="absolute inset-0 bg-black bg-opacity-40 flex items-end p-2">
-                <h3 className="text-white font-bold">{option.label}</h3>
+                {/* Adicionado onError para fallback */}
+                <img
+                    src={option.imageUrl}
+                    alt={option.label}
+                    className="w-full h-40 object-cover bg-zinc-700" // Adicionado bg-zinc-700 como fallback
+                    // Fallback caso a imagem principal falhe
+                    onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.onerror = null; // Previne loop infinito
+                        target.src = `https://placehold.co/500x750/1f2937/ffffff?text=${encodeURIComponent(option.label)}`;
+                    }}
+                 />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent flex items-end p-2"> {/* Gradiente para melhor legibilidade */}
+                    <h3 className="text-white font-bold text-sm">{option.label}</h3> {/* Tamanho de fonte ajustado */}
                 </div>
                 {selectedInterests.includes(option.id) && (
-                <div className="absolute top-2 right-2 bg-pink-500 rounded-full w-6 h-6 flex items-center justify-center">
+                <div className="absolute top-2 right-2 bg-pink-500 rounded-full w-6 h-6 flex items-center justify-center shadow-lg">
                     <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path> {/* Linha mais grossa */}
                     </svg>
                 </div>
                 )}
             </div>
             ))}
         </div>
-        {/* ALTERAÇÃO 2: Adicionado o botão 'Voltar' e o container flex para os dois botões */}
         <div className="mt-8 flex flex-col sm:flex-row gap-4">
-            <button onClick={onBack} className="w-full bg-gray-700 text-white font-bold py-3 px-4 rounded-lg transition-colors hover:bg-gray-600">
+            <button onClick={onBack} className="w-full bg-gray-700 text-white font-bold py-3 px-4 rounded-lg transition-colors hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500">
                 Voltar
             </button>
-            <button onClick={handleNextClick} disabled={selectedInterests.length === 0} className="w-full bg-pink-600 text-white font-bold py-3 px-4 rounded-lg transition-colors duration-300 hover:bg-pink-700 disabled:bg-gray-500 disabled:cursor-not-allowed">
+            <button onClick={handleNextClick} disabled={selectedInterests.length === 0} className="w-full bg-pink-600 text-white font-bold py-3 px-4 rounded-lg transition-colors duration-300 hover:bg-pink-700 disabled:bg-gray-500 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-pink-500">
                 Avançar
             </button>
         </div>
