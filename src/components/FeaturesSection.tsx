@@ -1,8 +1,20 @@
 // src/components/FeaturesSection.tsx
 
-import React from 'react';
+import React, { useState, Fragment } from 'react';
 import { Camera, ShieldCheck, MapPin, UserPlus } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { Dialog, Transition } from '@headlessui/react'; 
+import { FaTimes } from 'react-icons/fa'; 
+
+// ---
+// CONFIGURE SUAS URLs AQUI
+// ---
+// ATENÇÃO: Você ainda precisa trocar esta URL pela sua IMAGEM DE CAPA (miniatura)
+const THUMBNAIL_URL = 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=500'; // <-- TROQUE PELA SUA THUMBNAIL
+
+// VÍDEO ATUALIZADO (da pasta /public)
+const VIDEO_URL = '/anuncio.mp4'; 
+// ---
 
 const features = [
   {
@@ -28,6 +40,16 @@ const features = [
 ];
 
 const FeaturesSection = () => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  function closeModal() {
+    setIsOpen(false);
+  }
+
+  function openModal() {
+    setIsOpen(true);
+  }
+
   return (
     <section className="bg-gray-50 py-20">
       <div className="container mx-auto px-4">
@@ -54,10 +76,13 @@ const FeaturesSection = () => {
             </div>
           </div>
 
-          {/* Coluna do Vídeo */}
-          <div className="relative group w-full max-w-sm mx-auto">
+          {/* COLUNA DO VÍDEO (GATILHO) */}
+          <div 
+            onClick={openModal} 
+            className="relative group w-full max-w-sm mx-auto cursor-pointer" 
+          >
             <img 
-              src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=500" 
+              src={THUMBNAIL_URL} // <-- Usando a variável da thumbnail
               alt="Boas-vindas ao MyExtasyClub" 
               className="w-full h-auto rounded-lg shadow-2xl"
             />
@@ -72,6 +97,64 @@ const FeaturesSection = () => {
           </div>
         </div>
       </div>
+
+      {/* O MODAL DE VÍDEO */}
+      <Transition appear show={isOpen} as={Fragment}>
+        <Dialog as="div" className="relative z-50" onClose={closeModal}>
+          
+          {/* Overlay de fundo */}
+          <Transition.Child
+            as={Fragment}
+            enter="ease-out duration-300"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="ease-in duration-200"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
+          >
+            <div className="fixed inset-0 bg-black bg-opacity-75" />
+          </Transition.Child>
+
+          {/* Conteúdo do Modal */}
+          <div className="fixed inset-0 overflow-y-auto">
+            <div className="flex min-h-full items-center justify-center p-4">
+              <Transition.Child
+                as={Fragment}
+                enter="ease-out duration-300"
+                enterFrom="opacity-0 scale-95"
+                enterTo="opacity-100 scale-100"
+                leave="ease-in duration-200"
+                leaveFrom="opacity-100 scale-100"
+                leaveTo="opacity-0 scale-95"
+              >
+                <Dialog.Panel className="relative w-full max-w-4xl transform overflow-hidden rounded-lg bg-black shadow-xl transition-all">
+                  
+                  <button
+                    onClick={closeModal}
+                    className="absolute top-2 right-2 z-10 p-2 text-white opacity-70 hover:opacity-100"
+                  >
+                    <FaTimes className="h-6 w-6" /> {/* Ícone de fechar */}
+                  </button>
+
+                  {/* Player de Vídeo */}
+                  <div className="aspect-video"> 
+                    <video
+                      className="w-full h-full"
+                      src={VIDEO_URL} // <-- VÍDEO ATUALIZADO
+                      controls
+                      autoPlay
+                      loop
+                    >
+                      Seu navegador não suporta a tag de vídeo.
+                    </video>
+                  </div>
+
+                </Dialog.Panel>
+              </Transition.Child>
+            </div>
+          </div>
+        </Dialog>
+      </Transition>
     </section>
   );
 };
