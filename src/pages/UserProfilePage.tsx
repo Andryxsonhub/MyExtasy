@@ -1,17 +1,17 @@
 // src/pages/UserProfilePage.tsx
-// --- ATUALIZADO (Fase 3B: Adiciona o estado e renderiza o ChatModal) ---
+// --- ATUALIZADO (Mostra "Upgrade" na tab Vídeos para usuários gratuitos) ---
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { useNavigate, useParams, useLocation, Link } from 'react-router-dom'; // Importa Link
 import api from '../services/api';
 import Layout from '../components/Layout';
 import ProfileHeader from '../components/ProfileHeader';
 import ProfileTabs from '../components/ProfileTabs';
-import ProfileSidebar, { StatType } from '../components/ProfileSidebar'; // Importar StatType
+import ProfileSidebar, { StatType } from '../components/ProfileSidebar';
 import CreatePost from '../components/CreatePost';
 import EditProfileModal from '../components/EditProfileModal';
 import PostList from '../components/PostList';
-import type { Post, UserData, Photo, Video } from '../types/types'; // Garantir que UserData esteja atualizado
+import type { Post, UserData, Photo, Video } from '../types/types'; 
 import UploadPhotoModal from '../components/UploadPhotoModal';
 import UploadVideoModal from '../components/UploadVideoModal';
 import AboutTabContent from '../components/tabs/AboutTabContent';
@@ -20,16 +20,20 @@ import VideosTabContent from '../components/tabs/VideosTabContent';
 import CertificationModal from '../components/CertificationModal';
 import StatsModal from '../components/StatsModal';
 import DetailedStatsModal from '../components/DetailedStatsModal'; 
-// --- NOVO (1/5): Importa o novo modal de Chat ---
 import ChatModal from '../components/ChatModal'; 
 import { useAuth } from '../contexts/AuthProvider';
 import { fetchMyStats } from '../services/interactionApi';
+import { useToast } from "@/components/ui/use-toast"; 
+import AccountSettingsModal from '../components/AccountSettingsModal';
+// --- ★★★ NOVO IMPORT (1/2): Importa o Button ★★★ ---
+import { Button } from '@/components/ui/button';
 
 const UserProfilePage: React.FC = () => {
   const navigate = useNavigate();
   const { userId } = useParams<{ userId: string }>();
   const location = useLocation();
-  const { user: loggedInUser } = useAuth();
+  const { user: loggedInUser, logout } = useAuth();
+  const { toast } = useToast();
 
   const [profileData, setProfileData] = useState<UserData | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
@@ -41,7 +45,7 @@ const UserProfilePage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('posts');
   const [isMyProfile, setIsMyProfile] = useState(false);
 
-  // States dos Modais Antigos (sem alteração)
+  // States dos Modais (Antigos)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const openEditModal = () => setIsEditModalOpen(true);
   const closeEditModal = () => setIsEditModalOpen(false);
@@ -58,11 +62,13 @@ const UserProfilePage: React.FC = () => {
   const openStatsModal = () => setIsStatsModalOpen(true);
   const closeStatsModal = () => setIsStatsModalOpen(false);
 
+  // States Modais (Novos)
   const [isDetailedStatsModalOpen, setIsDetailedStatsModalOpen] = useState(false);
   const [detailedStatType, setDetailedStatType] = useState<StatType | null>(null);
-
-  // --- NOVO (2/5): Estado para o modal de Chat ---
   const [isChatModalOpen, setIsChatModalOpen] = useState(false);
+  const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
+  const openAccountModal = () => setIsAccountModalOpen(true);
+  const closeAccountModal = () => setIsAccountModalOpen(false);
 
   const openDetailedStatsModal = (statType: StatType) => {
     const targetUserId = userId ? parseInt(userId, 10) : loggedInUser?.id;
@@ -79,11 +85,11 @@ const UserProfilePage: React.FC = () => {
     setDetailedStatType(null); 
   };
 
-  // --- NOVO (3/5): Funções para controlar o modal de Chat ---
+  // Funções para controlar o modal de Chat
   const openChatModal = () => setIsChatModalOpen(true);
   const closeChatModal = () => setIsChatModalOpen(false);
 
-  // fetchData (Sem alteração)
+  // fetchData (Lida com o erro 403 de vídeos)
   const fetchData = useCallback(async () => {
     const isViewingOwnProfile = !!(location.pathname === '/meu-perfil' || (userId && loggedInUser && parseInt(userId, 10) === loggedInUser.id));
     setIsMyProfile(isViewingOwnProfile);
@@ -95,8 +101,11 @@ const UserProfilePage: React.FC = () => {
 
     try {
       setIsLoading(true); setError(null);
-      const [profileResponse, postsResponse, photosResponse, videosResponse] = await Promise.all([
-        api.get(profileUrl), api.get(postsUrl), api.get(photosUrl), api.get(videosUrl)
+      
+      const [profileResponse, postsResponse, photosResponse] = await Promise.all([
+        api.get<UserData>(profileUrl), 
+        api.get(postsUrl), 
+        api.get(photosUrl)
       ]);
       
       let completeProfileData = profileResponse.data;
@@ -107,7 +116,9 @@ const UserProfilePage: React.FC = () => {
           completeProfileData = {
             ...completeProfileData,
             monthlyStats: {
-              ...(completeProfileData.monthlyStats || {}), 
+              visits: completeProfileData.monthlyStats?.visits || 0,
+              commentsReceived: completeProfileData.monthlyStats?.commentsReceived || 0,
+              commentsMade: completeProfileData.monthlyStats?.commentsMade || 0,
               likesReceived: statsData.likesReceived, 
               followers: statsData.followers 
             }
@@ -115,7 +126,9 @@ const UserProfilePage: React.FC = () => {
         } catch (statsError) {
           console.error("Erro ao buscar estatísticas da sidebar:", statsError);
             completeProfileData.monthlyStats = {
-                ...(completeProfileData.monthlyStats || {}),
+                visits: 0,
+                commentsReceived: 0,
+                commentsMade: 0,
                 likesReceived: 0,
                 followers: 0
            };
@@ -132,10 +145,22 @@ const UserProfilePage: React.FC = () => {
           ? `${photo.url}&${cacheBuster}` 
           : `${photo.url}?${cacheBuster}`
       }));
-
       setPhotos(photosWithCacheBuster); 
-      setVideos(videosResponse.data);
-    } catch (err) {
+
+      // 3. Verifica se tem permissão para ver vídeos
+      if (completeProfileData.tipo_plano !== 'gratuito') {
+        try {
+          const videosResponse = await api.get(videosUrl);
+          setVideos(videosResponse.data);
+        } catch (videoError) {
+          console.warn("Não foi possível carregar vídeos (talvez o plano tenha expirado):", videoError);
+          setVideos([]); // Define como vazio
+        }
+      } else {
+        setVideos([]); // Define como vazio se for gratuito
+      }
+
+  } catch (err) {
       setError('Erro ao carregar dados do perfil.'); console.error('Erro fetchData:', err);
     } finally { setIsLoading(false); }
   }, [navigate, userId, location.pathname, loggedInUser]);
@@ -144,7 +169,7 @@ const UserProfilePage: React.FC = () => {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // useEffect registerView (sem alteração)
+  // useEffect registerView
   useEffect(() => {
     const registerView = async () => {
         if (profileData && !isMyProfile && userId) {
@@ -155,6 +180,31 @@ const UserProfilePage: React.FC = () => {
     registerView();
   }, [profileData, isMyProfile, userId]);
 
+  // (Fase 6): Funções de Ação para Congelar/Excluir
+  const handleFreezeAccount = async () => {
+    try {
+      await api.post('/users/congelar');
+      toast({ title: "Conta Congelada", description: "Sua conta foi congelada. Você será desconectado." });
+      logout(); 
+    } catch (error) {
+      console.error('Falha ao congelar conta:', error);
+      toast({ title: "Erro", description: "Não foi possível congelar sua conta.", variant: "destructive" });
+      throw error; 
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    try {
+      await api.delete('/users/excluir');
+      toast({ title: "Conta Excluída", description: "Sua conta foi excluída permanentemente. Você será desconectado." });
+      logout(); 
+    } catch (error) {
+      console.error('Falha ao excluir conta:', error);
+      toast({ title: "Erro", description: "Não foi possível excluir sua conta.", variant: "destructive" });
+      throw error; 
+    }
+  };
+
   const detailedStatsUserId = userId ? parseInt(userId, 10) : loggedInUser?.id;
 
   return (
@@ -163,14 +213,13 @@ const UserProfilePage: React.FC = () => {
         {isLoading && <p className="text-center text-white">Carregando...</p>}
         {error && <p className="text-center text-red-500">{error}</p>}
         
-        {/* --- NOVO (4/5): Passa a nova função 'onOpenChatModal' --- */}
         {profileData && (
           <ProfileHeader 
             user={profileData} 
             onEditClick={isMyProfile ? openEditModal : () => {}} 
             onCoverUploadSuccess={isMyProfile ? fetchData : () => {}} 
             isMyProfile={isMyProfile} 
-            onOpenChatModal={openChatModal} // <-- Passa a função para o Header
+            onOpenChatModal={openChatModal} 
           />
         )}
 
@@ -183,28 +232,44 @@ const UserProfilePage: React.FC = () => {
                 <div className="mt-6">
                   {isMyProfile && activeTab === 'posts' && <CreatePost userProfilePicture={profileData.profilePictureUrl} onPostCreated={fetchData} />}
                   {activeTab === 'posts' && <div className={isMyProfile ? "mt-8" : ""}><PostList posts={posts} /></div>}
-                  {activeTab === 'about' && <AboutTabContent user={profileData} />}
+             {activeTab === 'about' && <AboutTabContent user={profileData} />}
                   {activeTab === 'photos' && <PhotosTabContent photos={photos} onAddPhotoClick={isMyProfile ? openUploadPhotoModal : () => {}} isMyProfile={isMyProfile} onDeleteSuccess={fetchData} />}
-                {activeTab === 'videos' &&
-                    <VideosTabContent
+                  
+                  {/* --- ★★★ CORREÇÃO (2/2): Lógica de renderização da Tab Vídeos ★★★ --- */}
+                  {activeTab === 'videos' && (
+                    profileData.tipo_plano !== 'gratuito' ? (
+                      // 1. Se for PAGO, mostra os vídeos
+                      <VideosTabContent
                       videos={videos}
                       onAddVideoClick={isMyProfile ? openUploadVideoModal : () => {}}
                       isMyProfile={isMyProfile}
                       onDeleteSuccess={fetchData}
                     />
-                  }
+                    ) : (
+                      // 2. Se for GRATUITO, mostra a mensagem de Upgrade
+                      <div className="text-center py-12">
+                        <h3 className="text-2xl font-bold text-white mb-4">Acesso Exclusivo para Assinantes</h3>
+                        <p className="text-gray-400 mb-6 max-w-md mx-auto">Esta área é reservada para membros com um plano. Faça um upgrade para ver e partilhar vídeos exclusivos.</p>
+                        <Button asChild className="bg-primary hover:bg-primary/90 text-white">
+                          <Link to="/planos">Ver Planos</Link>
+                        </Button>
+                      </div>
+                    )
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* Sidebar (sem alteração) */}
-            <div className="w-full md:w-1/3 self-start md:sticky md:top-24"> 
+            {/* Sidebar (Passa as novas props da Fase 6) */}
+      <div className="w-full md:w-1/3 self-start md:sticky md:top-24"> 
               <ProfileSidebar
                   user={profileData}
                   onViewCertificationClick={isMyProfile ? openCertificationModal : () => {}} 
-                  onViewStatsClick={isMyProfile ? openStatsModal : () => {}} 
+          onViewStatsClick={isMyProfile ? openStatsModal : () => {}} 
                   onStatClick={openDetailedStatsModal} 
-      _         />
+                  isMyProfile={isMyProfile}
+                  onOpenAccountModal={openAccountModal} 
+              />
             </div>
           </div>
         )}
@@ -216,7 +281,7 @@ const UserProfilePage: React.FC = () => {
           <EditProfileModal isOpen={isEditModalOpen} onClose={closeEditModal} currentUser={profileData} onUpdateSuccess={handleUpdateSuccess} />
           <UploadPhotoModal isOpen={isUploadPhotoModalOpen} onClose={closeUploadPhotoModal} onUploadSuccess={fetchData} />
           <UploadVideoModal isOpen={isUploadVideoModalOpen} onClose={closeUploadVideoModal} onUploadSuccess={fetchData} />
-          <CertificationModal isOpen={isCertificationModalOpen} onClose={closeCertificationModal} user={profileData} />
+          <CertificationModal isOpen={isCertificationModalOpen} onClose={closeCertificationModal} user={profileData} />
           <StatsModal isOpen={isStatsModalOpen} onClose={closeStatsModal} user={profileData} />
         </>
       )}
@@ -225,19 +290,28 @@ const UserProfilePage: React.FC = () => {
       {detailedStatsUserId && detailedStatType && (
         <DetailedStatsModal
           isOpen={isDetailedStatsModalOpen}
-          onClose={closeDetailedStatsModal}
+        onClose={closeDetailedStatsModal}
           userId={detailedStatsUserId}
           statType={detailedStatType}
         />
       )}
 
-      {/* --- NOVO (5/5): Renderiza o Modal de Chat --- */}
-      {/* O modal só é renderizado se tivermos um perfil (targetUser) */}
+      {/* Renderiza o Modal de Chat */}
       {profileData && (
         <ChatModal 
           isOpen={isChatModalOpen}
           onClose={closeChatModal}
-          targetUser={profileData} // O 'profileData' É o usuário-alvo
+          targetUser={profileData} 
+        />
+      )}
+
+      {/* (Fase 6): Renderiza o Modal de Conta */}
+      {isMyProfile && (
+        <AccountSettingsModal 
+          isOpen={isAccountModalOpen}
+          onClose={closeAccountModal}
+          onFreeze={handleFreezeAccount}
+          onDelete={handleDeleteAccount}
         />
       )}
     </Layout>

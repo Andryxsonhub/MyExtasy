@@ -1,20 +1,20 @@
 // src/components/ChatModal.tsx
-// --- ATUALIZAÇÃO (Tentativa 3: Força o uso de alias '@/' para todos os imports) ---
-// Este é o componente (Modal) da janela de Chat Privado.
+// --- NOVO FICHEIRO (Fase 3B: O Modal de Chat Privado) ---
+// --- (Corrigido com caminhos relativos e sem erros de 'any' ou 'string') ---
 
 import React, { useState, useEffect, useRef, FormEvent } from 'react';
-// --- CORREÇÃO: Usando alias '@/...' para o UI Kit ---
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { useToast } from "@/components/ui/use-toast";
+// --- Caminhos relativos para a pasta ./ui ---
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "./ui/dialog";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
+import { useToast } from "./ui/use-toast";
 import { SendHorizonal, Loader2, AlertCircle, ShoppingCart } from 'lucide-react';
-// --- CORREÇÃO: Usando alias '@/...' para os contextos e serviços ---
-import { useAuth } from '@/contexts/AuthProvider'; 
-import type { UserData, Message } from '@/types/types'; 
-import { fetchConversation, sendMessage } from '@/services/chatApi'; 
+// --- Caminhos relativos para pastas superiores ---
+import { useAuth } from '../contexts/AuthProvider'; 
+import type { UserData, Message } from '../types/types'; 
+import { fetchConversation, sendMessage } from '../services/chatApi'; 
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
@@ -139,7 +139,7 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose, targetUser }) =>
             const isMyMessage = msg.authorId === loggedInUser?.id;
             return (
               <div 
-                key={msg.id} 
+                key={msg.id.toString()} // Converte para string para a key
                 className={`flex ${isMyMessage ? 'justify-end' : 'justify-start'}`}
               >
                 <div 
