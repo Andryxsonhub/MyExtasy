@@ -1,16 +1,15 @@
-// src/pages/Explorar.tsx (VERSÃO ATUALIZADA - Slider de Idade trocado por Selects)
+// src/pages/Explorar.tsx (VERSÃO ATUALIZADA - Filtros Corrigidos)
 
 import React, { useState, useEffect } from 'react';
-import api from '../services/api';
+// --- ★★★ CORREÇÃO: Imports voltaram para @/ ★★★ ---
+import api from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { UserData } from '@/types/types'; // Assumindo que UserData está correto
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Link } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
-// import { Slider } from '@/components/ui/slider'; // REMOVIDO Slider
 import { Loader2, Search, MapPin, Filter } from 'lucide-react';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger, SheetFooter } from "@/components/ui/sheet";
-// --- ADICIONADO: Componentes do Select do shadcn/ui ---
 import {
   Select,
   SelectContent,
@@ -18,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-// --- FIM ADIÇÃO ---
+// --- FIM DA CORREÇÃO ---
 import { AxiosError } from 'axios';
 
 // --- OPÇÕES PARA OS FILTROS --- (Sem alteração)
@@ -30,7 +29,6 @@ const filterOptions = {
 
 // --- Gerar opções de idade ---
 const ageOptions = Array.from({ length: (70 - 18) + 1 }, (_, i) => 18 + i);
-// Adicionar opção "70+" ou similar se desejar um limite superior aberto
 // const ageOptionsWithPlus = [...ageOptions, '70+']; // Exemplo
 
 // --- COMPONENTES ---
@@ -38,7 +36,6 @@ const UserCard: React.FC<{ user: Partial<UserData> }> = ({ user }) => (
   <Link to={`/profile/${user.id}`} className="block bg-card rounded-lg overflow-hidden shadow-lg hover:shadow-primary/50 transition-shadow duration-300">
     <div className="relative">
       <Avatar className="w-full h-48 rounded-none">
-        {/* CORREÇÃO AQUI: Passar string vazia se for null, ou undefined */}
         <AvatarImage src={user.profilePictureUrl || undefined} alt={user.name || 'Usuário'} className="object-cover" />
         <AvatarFallback className="text-3xl rounded-none">{user.name?.substring(0, 2).toUpperCase() || '??'}</AvatarFallback>
       </Avatar>
@@ -71,25 +68,28 @@ const Explorar: React.FC = () => {
     setList(prevList => prevList.includes(item) ? prevList.filter(i => i !== item) : [...prevList, item]);
   };
   
-  // handleSearch (Sem alteração na lógica principal)
+  // =======================================================
+  // ▼▼▼ CORREÇÃO (1/2): Função de Busca (handleSearch) ▼▼▼
+  // =======================================================
   const handleSearch = async () => {
     setIsSheetOpen(false);
     setIsLoading(true);
-    const params: Record<string, string | number> = {
-        minAge: ageRange[0],
-        maxAge: ageRange[1] === 70 ? 100 : ageRange[1], // Se max for 70, envia 100 (ou outro valor alto)
-        q: searchQuery,
-        location: location,
-        gender: selectedGenders.join(','),
-        interests: selectedInterests.join(','),
-        fetishes: selectedFetishes.join(','),
+
+    // 1. Montamos o objeto 'body' que o backend espera
+    const filters = {
+      searchTerm: searchQuery,
+      location: location,
+      genders: selectedGenders, // Enviamos o array
+      minAge: ageRange[0],
+      maxAge: ageRange[1] === 70 ? 100 : ageRange[1], // 100 = 70+
+      // Combinamos interesses e fetiches em um único array
+      interests: [...selectedInterests, ...selectedFetishes] 
     };
 
-    Object.keys(params).forEach(key => (params[key] === '' || params[key] === null || (Array.isArray(params[key]) && (params[key] as string[]).length === 0)) && delete params[key]);
-
-
     try {
-      const response = await api.get('/users/search', { params });
+      // 2. Usamos a rota POST '/users/search/advanced' (a nova)
+      //    e passamos os 'filters' como o 'body' do POST.
+      const response = await api.post('/users/search/advanced', filters);
       setSearchResults(response.data);
     } catch (error) {
       console.error("Erro ao buscar perfis:", error);
@@ -103,11 +103,23 @@ const Explorar: React.FC = () => {
     }
   };
 
-  // useEffect (Sem alteração)
+  // =======================================================
+  // ▼▼▼ CORREÇÃO (2/2): Busca Inicial (useEffect) ▼▼▼
+  // =======================================================
   useEffect(() => {
     const initialSearch = async () => {
+      // Também usamos a nova rota aqui, mas com filtros vazios
+      // para carregar os usuários iniciais.
       try {
-        const response = await api.get('/users/search');
+        const response = await api.post('/users/search/advanced', {
+          // Filtros vazios
+          searchTerm: '',
+          location: '',
+          genders: [],
+          minAge: 18,
+          maxAge: 100,
+          interests: []
+        });
         setSearchResults(response.data);
       } catch (error) {
         console.error("Erro ao buscar perfis iniciais:", error);
@@ -119,7 +131,7 @@ const Explorar: React.FC = () => {
     };
 
     initialSearch();
-  }, []);
+  }, []); // Roda apenas uma vez
 
   // --- Painel de filtros reutilizável (MODIFICADO) ---
   const FilterPanel = () => (
@@ -193,7 +205,7 @@ const Explorar: React.FC = () => {
                   <SelectContent>
                     {ageOptions.map(age => (
                       // Desabilita opções menores que a idade mínima selecionada
-                       <SelectItem key={`max-${age}`} value={String(age)} disabled={age < ageRange[0]}>
+                        <SelectItem key={`max-${age}`} value={String(age)} disabled={age < ageRange[0]}>
                         {age === 70 ? '70+' : age} {/* Mostra 70+ na última opção se desejar */}
                       </SelectItem>
                     ))}
@@ -293,3 +305,4 @@ const Explorar: React.FC = () => {
 };
 
 export default Explorar;
+

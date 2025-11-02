@@ -1,151 +1,151 @@
 // src/pages/UserProfilePage.tsx
-// --- ATUALIZADO (Mostra "Upgrade" na tab Vídeos para usuários gratuitos) ---
+// --- CORREÇÃO: Removida a borda vermelha de teste ---
+// --- Mantendo os imports @/ ---
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams, useLocation, Link } from 'react-router-dom'; // Importa Link
-import api from '../services/api';
-import Layout from '../components/Layout';
-import ProfileHeader from '../components/ProfileHeader';
-import ProfileTabs from '../components/ProfileTabs';
-import ProfileSidebar, { StatType } from '../components/ProfileSidebar';
-import CreatePost from '../components/CreatePost';
-import EditProfileModal from '../components/EditProfileModal';
-import PostList from '../components/PostList';
+import api from '@/services/api';
+import Layout from '@/components/Layout';
+import ProfileHeader from '@/components/ProfileHeader';
+import ProfileTabs from '@/components/ProfileTabs';
+import ProfileSidebar, { StatType } from '@/components/ProfileSidebar';
+import CreatePost from '@/components/CreatePost';
+import EditProfileModal from '@/components/EditProfileModal';
+import PostList from '@/components/PostList';
 import type { Post, UserData, Photo, Video } from '../types/types'; 
-import UploadPhotoModal from '../components/UploadPhotoModal';
-import UploadVideoModal from '../components/UploadVideoModal';
-import AboutTabContent from '../components/tabs/AboutTabContent';
-import PhotosTabContent from '../components/tabs/PhotosTabContent';
-import VideosTabContent from '../components/tabs/VideosTabContent';
-import CertificationModal from '../components/CertificationModal';
-import StatsModal from '../components/StatsModal';
-import DetailedStatsModal from '../components/DetailedStatsModal'; 
-import ChatModal from '../components/ChatModal'; 
-import { useAuth } from '../contexts/AuthProvider';
-import { fetchMyStats } from '../services/interactionApi';
+import UploadPhotoModal from '@/components/UploadPhotoModal';
+import UploadVideoModal from '@/components/UploadVideoModal';
+import AboutTabContent from '@/components/tabs/AboutTabContent';
+import PhotosTabContent from '@/components/tabs/PhotosTabContent';
+import VideosTabContent from '@/components/tabs/VideosTabContent';
+import CertificationModal from '@/components/CertificationModal';
+import StatsModal from '@/components/StatsModal';
+import DetailedStatsModal from '@/components/DetailedStatsModal'; 
+import ChatModal from '@/components/ChatModal'; 
+import { useAuth } from '@/contexts/AuthProvider';
+import { fetchMyStats } from '@/services/interactionApi';
 import { useToast } from "@/components/ui/use-toast"; 
-import AccountSettingsModal from '../components/AccountSettingsModal';
-// --- ★★★ NOVO IMPORT (1/2): Importa o Button ★★★ ---
+import AccountSettingsModal from '@/components/AccountSettingsModal';
 import { Button } from '@/components/ui/button';
 
 const UserProfilePage: React.FC = () => {
-  const navigate = useNavigate();
-  const { userId } = useParams<{ userId: string }>();
-  const location = useLocation();
-  const { user: loggedInUser, logout } = useAuth();
+  const navigate = useNavigate();
+  const { userId } = useParams<{ userId: string }>();
+  const location = useLocation();
+  const { user: loggedInUser, logout } = useAuth();
   const { toast } = useToast();
 
-  const [profileData, setProfileData] = useState<UserData | null>(null);
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [photos, setPhotos] = useState<Photo[]>([]);
-  const [videos, setVideos] = useState<Video[]>([]);
-  
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState('posts');
-  const [isMyProfile, setIsMyProfile] = useState(false);
+  const [profileData, setProfileData] = useState<UserData | null>(null);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [photos, setPhotos] = useState<Photo[]>([]);
+  const [videos, setVideos] = useState<Video[]>([]);
+  
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState('posts');
+  const [isMyProfile, setIsMyProfile] = useState(false);
 
-  // States dos Modais (Antigos)
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const openEditModal = () => setIsEditModalOpen(true);
-  const closeEditModal = () => setIsEditModalOpen(false);
-  const [isUploadPhotoModalOpen, setIsUploadPhotoModalOpen] = useState(false);
-  const openUploadPhotoModal = () => setIsUploadPhotoModalOpen(true);
-  const closeUploadPhotoModal = () => setIsUploadPhotoModalOpen(false);
-  const [isUploadVideoModalOpen, setIsUploadVideoModalOpen] = useState(false);
-  const openUploadVideoModal = () => setIsUploadVideoModalOpen(true);
-  const closeUploadVideoModal = () => setIsUploadVideoModalOpen(false);
-  const [isCertificationModalOpen, setIsCertificationModalOpen] = useState(false);
-  const openCertificationModal = () => setIsCertificationModalOpen(true);
-  const closeCertificationModal = () => setIsCertificationModalOpen(false);
-  const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
-  const openStatsModal = () => setIsStatsModalOpen(true);
-  const closeStatsModal = () => setIsStatsModalOpen(false);
+  // States dos Modais (Antigos)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const openEditModal = () => setIsEditModalOpen(true);
+  const closeEditModal = () => setIsEditModalOpen(false);
+  const [isUploadPhotoModalOpen, setIsUploadPhotoModalOpen] = useState(false);
+  const openUploadPhotoModal = () => setIsUploadPhotoModalOpen(true);
+  const closeUploadPhotoModal = () => setIsUploadPhotoModalOpen(false);
+  const [isUploadVideoModalOpen, setIsUploadVideoModalOpen] = useState(false);
+  const openUploadVideoModal = () => setIsUploadVideoModalOpen(true);
+  const closeUploadVideoModal = () => setIsUploadVideoModalOpen(false);
+  const [isCertificationModalOpen, setIsCertificationModalOpen] = useState(false);
+  const openCertificationModal = () => setIsCertificationModalOpen(true);
+  const closeCertificationModal = () => setIsCertificationModalOpen(false);
+  const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
+  const openStatsModal = () => setIsStatsModalOpen(true);
+  const closeStatsModal = () => setIsStatsModalOpen(false);
 
-  // States Modais (Novos)
-  const [isDetailedStatsModalOpen, setIsDetailedStatsModalOpen] = useState(false);
-  const [detailedStatType, setDetailedStatType] = useState<StatType | null>(null);
+  // States Modais (Novos)
+  const [isDetailedStatsModalOpen, setIsDetailedStatsModalOpen] = useState(false);
+  const [detailedStatType, setDetailedStatType] = useState<StatType | null>(null);
   const [isChatModalOpen, setIsChatModalOpen] = useState(false);
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const openAccountModal = () => setIsAccountModalOpen(true);
   const closeAccountModal = () => setIsAccountModalOpen(false);
 
-  const openDetailedStatsModal = (statType: StatType) => {
-    const targetUserId = userId ? parseInt(userId, 10) : loggedInUser?.id;
-    if (targetUserId) {
-        setDetailedStatType(statType);
-        setIsDetailedStatsModalOpen(true);
-    } else {
-        console.error("Não foi possível determinar o ID do usuário para o modal de estatísticas.");
-    }
-  };
+  const openDetailedStatsModal = (statType: StatType) => {
+    const targetUserId = userId ? parseInt(userId, 10) : loggedInUser?.id;
+    if (targetUserId) {
+        setDetailedStatType(statType);
+        setIsDetailedStatsModalOpen(true);
+    } else {
+        console.error("Não foi possível determinar o ID do usuário para o modal de estatísticas.");
+    }
+  };
 
-  const closeDetailedStatsModal = () => {
-    setIsDetailedStatsModalOpen(false);
-    setDetailedStatType(null); 
-  };
+  const closeDetailedStatsModal = () => {
+    setIsDetailedStatsModalOpen(false);
+    setDetailedStatType(null); 
+  };
 
   // Funções para controlar o modal de Chat
   const openChatModal = () => setIsChatModalOpen(true);
   const closeChatModal = () => setIsChatModalOpen(false);
 
-  // fetchData (Lida com o erro 403 de vídeos)
-  const fetchData = useCallback(async () => {
-    const isViewingOwnProfile = !!(location.pathname === '/meu-perfil' || (userId && loggedInUser && parseInt(userId, 10) === loggedInUser.id));
-    setIsMyProfile(isViewingOwnProfile);
-    const targetId = isViewingOwnProfile ? null : userId; 
-    const profileUrl = isViewingOwnProfile ? '/users/profile' : `/users/profile/${targetId}`; 
-    const postsUrl = isViewingOwnProfile ? '/posts' : `/posts/user/${targetId}`;
-    const photosUrl = isViewingOwnProfile ? '/users/photos' : `/users/user/${targetId}/photos`;
-    const videosUrl = isViewingOwnProfile ? '/users/videos' : `/users/user/${targetId}/videos`;
+  // fetchData (Lida com o erro 403 de vídeos)
+  const fetchData = useCallback(async () => {
+    const isViewingOwnProfile = !!(location.pathname === '/meu-perfil' || (userId && loggedInUser && parseInt(userId, 10) === loggedInUser.id));
+    setIsMyProfile(isViewingOwnProfile);
+    const targetId = isViewingOwnProfile ? null : userId; 
+    const profileUrl = isViewingOwnProfile ? '/users/profile' : `/users/profile/${targetId}`; 
+    const postsUrl = isViewingOwnProfile ? '/posts' : `/posts/user/${targetId}`;
+    const photosUrl = isViewingOwnProfile ? '/users/photos' : `/users/user/${targetId}/photos`;
+    const videosUrl = isViewingOwnProfile ? '/users/videos' : `/users/user/${targetId}/videos`;
 
-    try {
-      setIsLoading(true); setError(null);
+    try {
+      setIsLoading(true); setError(null);
       
-      const [profileResponse, postsResponse, photosResponse] = await Promise.all([
-        api.get<UserData>(profileUrl), 
+      const [profileResponse, postsResponse, photosResponse] = await Promise.all([
+        api.get<UserData>(profileUrl), 
         api.get(postsUrl), 
         api.get(photosUrl)
-      ]);
-      
-      let completeProfileData = profileResponse.data;
+      ]);
+      
+      let completeProfileData = profileResponse.data;
 
-      if (isViewingOwnProfile) {
-        try {
-          const statsData = await fetchMyStats(); 
-          completeProfileData = {
-            ...completeProfileData,
-            monthlyStats: {
-              visits: completeProfileData.monthlyStats?.visits || 0,
-              commentsReceived: completeProfileData.monthlyStats?.commentsReceived || 0,
-              commentsMade: completeProfileData.monthlyStats?.commentsMade || 0,
-              likesReceived: statsData.likesReceived, 
-              followers: statsData.followers 
-            }
-          };
-        } catch (statsError) {
-          console.error("Erro ao buscar estatísticas da sidebar:", statsError);
-            completeProfileData.monthlyStats = {
-                visits: 0,
-                commentsReceived: 0,
-                commentsMade: 0,
-                likesReceived: 0,
-                followers: 0
-           };
-        }
-      }
+      if (isViewingOwnProfile) {
+        try {
+          const statsData = await fetchMyStats(); 
+          completeProfileData = {
+            ...completeProfileData,
+            monthlyStats: {
+              visits: completeProfileData.monthlyStats?.visits || 0,
+              commentsReceived: completeProfileData.monthlyStats?.commentsReceived || 0,
+              commentsMade: completeProfileData.monthlyStats?.commentsMade || 0,
+              likesReceived: statsData.likesReceived, 
+              followers: statsData.followers 
+            }
+          };
+        } catch (statsError) {
+          console.error("Erro ao buscar estatísticas da sidebar:", statsError);
+            completeProfileData.monthlyStats = {
+                visits: 0,
+                commentsReceived: 0,
+                commentsMade: 0,
+                likesReceived: 0,
+                followers: 0
+           };
+        }
+      }
 
-      setProfileData(completeProfileData);
-      setPosts(postsResponse.data);
-      
-      const cacheBuster = `v=${Date.now()}`;
-      const photosWithCacheBuster: Photo[] = photosResponse.data.map((photo: Photo) => ({
-        ...photo,
-        url: photo.url.includes('?') 
-          ? `${photo.url}&${cacheBuster}` 
-          : `${photo.url}?${cacheBuster}`
-      }));
-      setPhotos(photosWithCacheBuster); 
+      setProfileData(completeProfileData);
+      setPosts(postsResponse.data);
+      
+      const cacheBuster = `v=${Date.now()}`;
+      const photosWithCacheBuster: Photo[] = photosResponse.data.map((photo: Photo) => ({
+        ...photo,
+        url: photo.url.includes('?') 
+          ? `${photo.url}&${cacheBuster}` 
+          : `${photo.url}?${cacheBuster}`
+      }));
+      setPhotos(photosWithCacheBuster); 
 
       // 3. Verifica se tem permissão para ver vídeos
       if (completeProfileData.tipo_plano !== 'gratuito') {
@@ -160,25 +160,25 @@ const UserProfilePage: React.FC = () => {
         setVideos([]); // Define como vazio se for gratuito
       }
 
-  } catch (err) {
-      setError('Erro ao carregar dados do perfil.'); console.error('Erro fetchData:', err);
-    } finally { setIsLoading(false); }
-  }, [navigate, userId, location.pathname, loggedInUser]);
-  
-  const handleUpdateSuccess = (updatedUser: UserData) => { setProfileData(updatedUser); };
+  } catch (err) {
+      setError('Erro ao carregar dados do perfil.'); console.error('Erro fetchData:', err);
+    } finally { setIsLoading(false); }
+  }, [navigate, userId, location.pathname, loggedInUser]);
+  
+  const handleUpdateSuccess = (updatedUser: UserData) => { setProfileData(updatedUser); };
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
-  // useEffect registerView
-  useEffect(() => {
-    const registerView = async () => {
-        if (profileData && !isMyProfile && userId) {
-            try { await api.post(`/users/profile/${userId}/view`); }
-            catch (error) { console.error("Erro registrar visita:", error); }
-        }
-    };
-    registerView();
-  }, [profileData, isMyProfile, userId]);
+  // useEffect registerView
+  useEffect(() => {
+    const registerView = async () => {
+        if (profileData && !isMyProfile && userId) {
+            try { await api.post(`/users/profile/${userId}/view`); }
+            catch (error) { console.error("Erro registrar visita:", error); }
+        }
+    };
+    registerView();
+  }, [profileData, isMyProfile, userId]);
 
   // (Fase 6): Funções de Ação para Congelar/Excluir
   const handleFreezeAccount = async () => {
@@ -205,15 +205,19 @@ const UserProfilePage: React.FC = () => {
     }
   };
 
-  const detailedStatsUserId = userId ? parseInt(userId, 10) : loggedInUser?.id;
+  const detailedStatsUserId = userId ? parseInt(userId, 10) : loggedInUser?.id;
 
-  return (
-    <Layout>
-      <div className="container mx-auto px-4 pt-24 pb-12">
-        {isLoading && <p className="text-center text-white">Carregando...</p>}
-        {error && <p className="text-center text-red-500">{error}</p>}
-        
-        {profileData && (
+  return (
+    <Layout>
+      {/* ======================================================= */}
+      {/* ▼▼▼ CORREÇÃO: Borda vermelha removida daqui ▼▼▼ */}
+      <div className="container mx-auto px-4 pt-24 pb-12">
+      {/* ======================================================= */}
+
+        {isLoading && <p className="text-center text-white">Carregando...</p>}
+        {error && <p className="text-center text-red-500">{error}</p>}
+        
+        {profileData && (
           <ProfileHeader 
             user={profileData} 
             onEditClick={isMyProfile ? openEditModal : () => {}} 
@@ -223,28 +227,29 @@ const UserProfilePage: React.FC = () => {
           />
         )}
 
-        {!isLoading && !error && profileData && (
-          <div className="mt-8 flex flex-col md:flex-row gap-8">
-            {/* Conteúdo Principal (Tabs) */}
-            <div className="w-full md:w-2/3">
-              <div className="bg-card p-6 rounded-lg shadow-lg">
-                <ProfileTabs activeTab={activeTab} setActiveTab={setActiveTab} />
-                <div className="mt-6">
-                  {isMyProfile && activeTab === 'posts' && <CreatePost userProfilePicture={profileData.profilePictureUrl} onPostCreated={fetchData} />}
-                  {activeTab === 'posts' && <div className={isMyProfile ? "mt-8" : ""}><PostList posts={posts} /></div>}
-             {activeTab === 'about' && <AboutTabContent user={profileData} />}
-                  {activeTab === 'photos' && <PhotosTabContent photos={photos} onAddPhotoClick={isMyProfile ? openUploadPhotoModal : () => {}} isMyProfile={isMyProfile} onDeleteSuccess={fetchData} />}
-                  
-                  {/* --- ★★★ CORREÇÃO (2/2): Lógica de renderização da Tab Vídeos ★★★ --- */}
+        {!isLoading && !error && profileData && (
+          <div className="mt-8 flex flex-col md:flex-row gap-8">
+            {/* Conteúdo Principal (Tabs) */}
+            <div className="w-full md:w-2/3">
+              <div className="bg-card p-6 rounded-lg shadow-lg">
+                <ProfileTabs activeTab={activeTab} setActiveTab={setActiveTab} />
+                <div className="mt-6">
+                  {isMyProfile && activeTab === 'posts' && <CreatePost userProfilePicture={profileData.profilePictureUrl} onPostCreated={fetchData} />}
+                  {activeTab === 'posts' && <div className={isMyProfile ? "mt-8" : ""}><PostList posts={posts} /></div>}
+                  {activeTab === 'about' && <AboutTabContent user={profileData} />}
+                  
+                  {/* ESTA É A LINHA IMPORTANTE (Ela usa o PhotosTabContent para TODOS) */}
+                  {activeTab === 'photos' && <PhotosTabContent photos={photos} onAddPhotoClick={isMyProfile ? openUploadPhotoModal : () => {}} isMyProfile={isMyProfile} onDeleteSuccess={fetchData} />}
+                  
                   {activeTab === 'videos' && (
                     profileData.tipo_plano !== 'gratuito' ? (
                       // 1. Se for PAGO, mostra os vídeos
                       <VideosTabContent
-                      videos={videos}
-                      onAddVideoClick={isMyProfile ? openUploadVideoModal : () => {}}
-                      isMyProfile={isMyProfile}
-                      onDeleteSuccess={fetchData}
-                    />
+                        videos={videos}
+                        onAddVideoClick={isMyProfile ? openUploadVideoModal : () => {}}
+                        isMyProfile={isMyProfile}
+                        onDeleteSuccess={fetchData}
+                      />
                     ) : (
                       // 2. Se for GRATUITO, mostra a mensagem de Upgrade
                       <div className="text-center py-12">
@@ -256,45 +261,45 @@ const UserProfilePage: React.FC = () => {
                       </div>
                     )
                   )}
-                </div>
-              </div>
-            </div>
+                </div>
+              </div>
+            </div>
 
-            {/* Sidebar (Passa as novas props da Fase 6) */}
-      <div className="w-full md:w-1/3 self-start md:sticky md:top-24"> 
-              <ProfileSidebar
-                  user={profileData}
-                  onViewCertificationClick={isMyProfile ? openCertificationModal : () => {}} 
-          onViewStatsClick={isMyProfile ? openStatsModal : () => {}} 
-                  onStatClick={openDetailedStatsModal} 
+            {/* Sidebar (Passa as novas props da Fase 6) */}
+      <div className="w-full md:w-1/3 self-start md:sticky md:top-24"> 
+              <ProfileSidebar
+                  user={profileData}
+                  onViewCertificationClick={isMyProfile ? openCertificationModal : () => {}} 
+            onViewStatsClick={isMyProfile ? openStatsModal : () => {}} 
+                  onStatClick={openDetailedStatsModal} 
                   isMyProfile={isMyProfile}
                   onOpenAccountModal={openAccountModal} 
-              />
-            </div>
-          </div>
-        )}
-      </div>
-      
-      {/* Modais Antigos */}
-      {isMyProfile && profileData && (
-        <>
-          <EditProfileModal isOpen={isEditModalOpen} onClose={closeEditModal} currentUser={profileData} onUpdateSuccess={handleUpdateSuccess} />
-          <UploadPhotoModal isOpen={isUploadPhotoModalOpen} onClose={closeUploadPhotoModal} onUploadSuccess={fetchData} />
-          <UploadVideoModal isOpen={isUploadVideoModalOpen} onClose={closeUploadVideoModal} onUploadSuccess={fetchData} />
-          <CertificationModal isOpen={isCertificationModalOpen} onClose={closeCertificationModal} user={profileData} />
-          <StatsModal isOpen={isStatsModalOpen} onClose={closeStatsModal} user={profileData} />
-        </>
-      )}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+      
+      {/* Modais Antigos */}
+      {isMyProfile && profileData && (
+        <>
+          <EditProfileModal isOpen={isEditModalOpen} onClose={closeEditModal} currentUser={profileData} onUpdateSuccess={handleUpdateSuccess} />
+          <UploadPhotoModal isOpen={isUploadPhotoModalOpen} onClose={closeUploadPhotoModal} onUploadSuccess={fetchData} />
+          <UploadVideoModal isOpen={isUploadVideoModalOpen} onClose={closeUploadVideoModal} onUploadSuccess={fetchData} />
+          <CertificationModal isOpen={isCertificationModalOpen} onClose={closeCertificationModal} user={profileData} />
+          <StatsModal isOpen={isStatsModalOpen} onClose={closeStatsModal} user={profileData} />
+        </>
+      )}
 
-      {/* Modal de Stats Detalhado */}
-      {detailedStatsUserId && detailedStatType && (
-        <DetailedStatsModal
-          isOpen={isDetailedStatsModalOpen}
-        onClose={closeDetailedStatsModal}
-          userId={detailedStatsUserId}
-          statType={detailedStatType}
-        />
-      )}
+      {/* Modal de Stats Detalhado */}
+      {detailedStatsUserId && detailedStatType && (
+        <DetailedStatsModal
+          isOpen={isDetailedStatsModalOpen}
+          onClose={closeDetailedStatsModal}
+          userId={detailedStatsUserId}
+          statType={detailedStatType}
+        />
+      )}
 
       {/* Renderiza o Modal de Chat */}
       {profileData && (
@@ -314,8 +319,8 @@ const UserProfilePage: React.FC = () => {
           onDelete={handleDeleteAccount}
         />
       )}
-    </Layout>
-  );
+    </Layout>
+  );
 };
 
 export default UserProfilePage;

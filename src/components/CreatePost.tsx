@@ -63,7 +63,11 @@ const CreatePost: React.FC<CreatePostProps> = ({ userProfilePicture, onPostCreat
               setContent(e.target.value);
               setError(null);
             }}
-            placeholder="Compartilhe aqui prazer com fotos, vídeos e textos picantes!"
+            // ==========================================================
+            // ★★★ ALTERAÇÃO DO TEXTO (1/3) ★★★
+            // ==========================================================
+            placeholder="Compartilhe aqui prazer com textos picantes!"
+            // ==========================================================
             className="w-full bg-transparent border-b border-border focus:outline-none focus:border-primary text-white resize-none p-2"
             rows={3}
             disabled={isLoading}
