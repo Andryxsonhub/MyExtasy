@@ -10,7 +10,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '@/services/api';
 import { useAuth } from '@/contexts/AuthProvider';
 import { Flame, ArrowLeft, SendHorizonal, Loader2, Gift } from 'lucide-react'; 
-import { io, Socket } from 'socket-io-client';
+import { io, Socket } from 'socket.io-client';
 import {
     LiveKitRoom,
     VideoTrack,
