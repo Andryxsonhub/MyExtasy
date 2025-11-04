@@ -9,8 +9,9 @@ import React, { useState, useEffect, FormEvent, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '@/services/api';
 import { useAuth } from '@/contexts/AuthProvider';
-import { Flame, ArrowLeft, SendHorizonal, Loader2, Gift } from 'lucide-react'; 
-import { io, Socket } from 'socket.io-client';
+import { Flame, ArrowLeft, SendHorizontal, Loader2, Gift } from 'lucide-react'; 
+import { io } from "socket.io-client";
+import type { Socket } from "socket.io-client";
 import {
     LiveKitRoom,
     VideoTrack,
@@ -197,7 +198,7 @@ const LiveContent: React.FC = () => {
                         />
                         
                         <Button type="submit" size="icon" disabled={!user || !socket || !isSocketConnected || inputValue.trim() === ''} className="p-2 bg-primary rounded-md font-semibold text-sm hover:bg-primary/90 transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed flex-shrink-0"> 
-                            <SendHorizonal className="w-5 h-5" />
+                            <SendHorizontal className="w-5 h-5" />
                         </Button>
                     </form>
                 </div>
