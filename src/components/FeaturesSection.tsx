@@ -13,7 +13,7 @@ import { FaTimes } from 'react-icons/fa';
 const THUMBNAIL_URL = 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=500'; // <-- TROQUE PELA SUA THUMBNAIL
 
 // VÍDEO ATUALIZADO (da pasta /public)
-const VIDEO_URL = '/anuncio.mp4'; 
+const VIDEO_URL = '/videos/anuncio.mp4'; 
 // ---
 
 const features = [
