@@ -1,10 +1,14 @@
+// src/App.tsx
+// --- CORRIGIDO (Layout agora esconde Header/Footer na página da Live) ---
+
 import { useEffect } from 'react';
 import { Toaster } from "./components/ui/toaster";
 import { Toaster as Sonner } from "./components/ui/sonner";
 import { TooltipProvider } from "./components/ui/tooltip";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useNavigate, useSearchParams } from "react-router-dom";
+// --- ★★★ 1. IMPORTAÇÃO NOVA ★★★ ---
+import { BrowserRouter, Routes, Route, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 
 import { AuthProvider, useAuth } from "./contexts/AuthProvider";
 import api from './services/api';
@@ -28,13 +32,12 @@ import Sobre from './pages/Sobre';
 import Contato from './pages/Contato';
 import RegistrationFlow from "./components/registration/RegistrationFlow";
 import TermosDeUso from './pages/TermosDeUso';
-
 import ExplorePage from "./pages/ExplorePage";
-// NOVA IMPORTAÇÃO: Componente de visualização de mídia
 import MediaViewPage from "./pages/MediaViewPage";
 
 const queryClient = new QueryClient();
 
+// (Componente GithubCallbackHandler não muda)
 const GithubCallbackHandler = () => {
     const { setIsLoggedIn } = useAuth();
     const navigate = useNavigate();
@@ -65,12 +68,11 @@ const GithubCallbackHandler = () => {
     return <div className="flex justify-center items-center h-screen bg-background"><p className="text-white text-xl animate-pulse">Autenticando...</p></div>;
 };
 
+// (Componente AppRoutes não muda)
 const AppRoutes = () => {
     return (
         <Routes>
             <Route path="/auth/github/callback" element={<GithubCallbackHandler />} />
-
-            {/* --- Rotas Públicas --- */}
             <Route path="/" element={<Index />} />
             <Route path="/loja" element={<Loja />} />
             <Route path="/planos" element={<Planos />} />
@@ -79,9 +81,6 @@ const AppRoutes = () => {
             <Route path="/cadastrar" element={<RegistrationFlow />} />
             <Route path="/contato" element={<Contato />} />
             <Route path="/termos-de-uso" element={<TermosDeUso />} />
-
-
-            {/* --- Rotas Protegidas --- */}
             <Route path="/explorar" element={<ProtectedRoute><Explorar /></ProtectedRoute>} />
             <Route path="/lives" element={<ProtectedRoute><Lives /></ProtectedRoute>} />
             <Route path="/live/:roomName" element={<ProtectedRoute><LivePage /></ProtectedRoute>} />
@@ -89,18 +88,42 @@ const AppRoutes = () => {
             <Route path="/home" element={<ProtectedRoute><ExplorePage /></ProtectedRoute>} />
             <Route path="/profile/:userId" element={<ProtectedRoute><UserProfilePage /></ProtectedRoute>} />
             <Route path="/meu-perfil" element={<ProtectedRoute><UserProfilePage /></ProtectedRoute>} />
-            
-            {/* ROTAS DE VISUALIZAÇÃO DE MÍDIA ADICIONADAS */}
-            {/* O React Router combina /photo/4 ou /video/5, e envia o tipo (photo/video) e o ID para a MediaViewPage */}
-            <Route path="/:mediaType/:id" element={<ProtectedRoute><MediaViewPage /></ProtectedRoute>} />
-
-
-            {/* Rota Catch-all para Not Found */}
+            <Route path="/:mediaType/:id" element={<ProtectedRoute><MediaViewPage /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
         </Routes>
     );
 };
 
+// --- ★★★ 2. NOVO COMPONENTE DE LAYOUT ★★★ ---
+// Criamos este componente para que ele possa usar 'useLocation'
+const AppLayout: React.FC = () => {
+  const location = useLocation();
+  // Verifica se a URL atual é a página da live
+  const isLivePage = location.pathname.startsWith('/live/');
+
+  return (
+    <AuthProvider>
+      {/* Só mostra o Header se NÃO for a página da live */}
+      {!isLivePage && <Header />}
+
+      <div className="flex flex-col min-h-screen">
+        {/*           Se for a Live, <main> não tem padding-top e ocupa a tela toda.
+          Se NÃO for a Live, <main> tem o padding-top do header.
+        */}
+        <main className={`flex-grow ${isLivePage ? '' : 'pt-16'}`}>
+          <AppRoutes />
+        </main>
+        
+        {/* Só mostra o Footer se NÃO for a página da live */}
+        {!isLivePage && <Footer />}
+      </div>
+    </AuthProvider>
+  );
+};
+
+
+// --- ★★★ 3. APP.TSX ATUALIZADO ★★★ ---
+// O App agora só renderiza os 'Providers' e o novo 'AppLayout'
 const App = () => {
     return (
         <QueryClientProvider client={queryClient}>
@@ -108,15 +131,8 @@ const App = () => {
                 <Toaster />
                 <Sonner position="top-center" />
                 <BrowserRouter>
-                    <AuthProvider>
-                        <Header />
-                        <div className="flex flex-col min-h-screen">
-                          <main className="flex-grow pt-16">
-                              <AppRoutes />
-                          </main>
-                          <Footer />
-                        </div>
-                    </AuthProvider>
+                    {/* Trocamos o conteúdo antigo por este componente */}
+                    <AppLayout />
                 </BrowserRouter>
             </TooltipProvider>
         </QueryClientProvider>

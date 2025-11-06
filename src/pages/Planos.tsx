@@ -1,17 +1,17 @@
 // src/pages/Planos.tsx
-// --- CORRIGIDO (Busca planos da API e implementa o handleSelectPlan) ---
+// --- CORREÇÃO FINAL (O map agora passa 'oldPrice' e 'isBlackFriday') ---
 
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/Layout'; 
 import PricingCard from '@/components/PricingCard'; 
 import type { PlanData as PricingCardPlan } from '@/components/PricingCard'; 
 import { useNavigate } from 'react-router-dom';
-import api from '@/services/api'; // Precisamos da API
-import { useToast } from '@/components/ui/use-toast'; // Para mostrar erros
-import { Loader2 } from 'lucide-react'; // Para o feedback de loading
+import api from '@/services/api'; 
+import { useToast } from '@/components/ui/use-toast'; 
+import { Loader2 } from 'lucide-react'; 
 
-// Este é o TIPO que a sua API (backend) envia
-// (Ele tem 'id' e 'priceInCents', que são cruciais)
+// --- ★★★ 1. CORREÇÃO DA INTERFACE ★★★ ---
+// Avisa ao TypeScript que a API vai enviar esses campos
 interface ApiPlan {
   id: number;
   name: string;
@@ -19,10 +19,10 @@ interface ApiPlan {
   features: string[];
   isRecommended: boolean;
   durationInDays: number;
+  oldPrice?: string; // <-- ADICIONADO
+  isBlackFriday?: boolean; // <-- ADICIONADO
 }
 
-// Este é o TIPO que o seu componente PricingCard espera
-// (Ele precisa do 'id' que veio da API)
 type PlanParaPagina = PricingCardPlan & {
   id: number;
 };
@@ -30,20 +30,21 @@ type PlanParaPagina = PricingCardPlan & {
 const Planos: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [plans, setPlans] = useState<PlanParaPagina[]>([]); // Estado para os planos da API
-  const [isLoading, setIsLoading] = useState(true); // Estado de loading da página
-  const [isRedirecting, setIsRedirecting] = useState(false); // Estado de loading do botão
+  const [plans, setPlans] = useState<PlanParaPagina[]>([]); 
+  const [isLoading, setIsLoading] = useState(true); 
+  const [isRedirecting, setIsRedirecting] = useState<number | null>(null); // (Correção do spinner)
 
-  // 1. BUSCA OS PLANOS DA API QUANDO A PÁGINA CARREGA
   useEffect(() => {
     const fetchPlans = async () => {
       setIsLoading(true);
       try {
-        const response = await api.get('/payments/subscription-plans');
+        // --- ★★★ 2. CORREÇÃO DO CACHE (MODO HARD) ★★★ ---
+        // Adiciona um timestamp para forçar o navegador a pegar dados novos
+        const response = await api.get(`/payments/subscription-plans?timestamp=${Date.now()}`);
         const apiPlans: ApiPlan[] = response.data;
 
-        // 2. Transforma os dados da API (ex: priceInCents)
-        // para o formato que o PricingCard espera (ex: price: "9,90")
+        // --- ★★★ 3. CORREÇÃO DO MAP ★★★ ---
+        // Agora passamos TODOS os dados para o 'formattedPlans'
         const formattedPlans: PlanParaPagina[] = apiPlans.map(apiPlan => ({
           id: apiPlan.id,
           name: apiPlan.name,
@@ -53,7 +54,8 @@ const Planos: React.FC = () => {
                      apiPlan.durationInDays === 90 ? "/trimestre" : "/ano",
           features: apiPlan.features,
           isRecommended: apiPlan.isRecommended,
-          // (Campos 'oldPrice' e 'isBlackFriday' não vêm da API, então serão omitidos)
+          isBlackFriday: apiPlan.isBlackFriday, // <-- ADICIONADO
+          oldPrice: apiPlan.oldPrice, // <-- ADICIONADO
         }));
         
         setPlans(formattedPlans);
@@ -70,20 +72,17 @@ const Planos: React.FC = () => {
     };
 
     fetchPlans();
-  }, [toast]); // Dependência do toast
+  }, [toast]);
 
-  // 3. FUNÇÃO DE COMPRA (AGORA CORRIGIDA)
   const handleSelectPlan = async (plan: PlanParaPagina) => {
     console.log("Plano selecionado:", plan.name, "com ID:", plan.id);
-    setIsRedirecting(true); // Ativa o spinner
+    setIsRedirecting(plan.id); 
 
     try {
-      // Chama a API de backend para criar o checkout
       const response = await api.post('/payments/create-subscription-checkout', { 
         planId: plan.id 
       });
 
-      // Se der certo, redireciona o usuário para o MercadoPago
       const checkoutUrl = response.data.checkoutUrl;
       if (checkoutUrl) {
         window.location.href = checkoutUrl;
@@ -99,11 +98,10 @@ const Planos: React.FC = () => {
         description: errorMsg,
         variant: "destructive",
       });
-      setIsRedirecting(false); // Desativa o spinner se der erro
+      setIsRedirecting(null);
     }
   };
 
-  // 4. RENDERIZAÇÃO (com loading)
   if (isLoading) {
     return (
       <Layout>
@@ -114,7 +112,6 @@ const Planos: React.FC = () => {
     );
   }
 
-  // 5. RENDERIZAÇÃO (com os planos da API)
   return (
     <Layout>
       <div className="bg-background text-white min-h-screen">
@@ -124,30 +121,27 @@ const Planos: React.FC = () => {
           <div className="max-w-3xl mx-auto text-center mb-12">
             <h1 className="text-4xl sm:text-5xl font-extrabold text-white">
               Escolha o plano ideal para você
-            </h1>
+section:             </h1>
             <p className="mt-4 text-lg text-gray-400">
               Tenha acesso ilimitado à nossa comunidade e a benefícios exclusivos para apimentar suas experiências.
             </p>
-          </div>
+  	     </div>
 
-          {/* Grid dos Planos (agora vindo do estado 'plans') */}
+          {/* Grid dos Planos */}
           <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
             {plans.map((plan) => (
               <PricingCard 
-                key={plan.id} 
-                plan={plan} 
-// Passa o objeto 'plan' inteiro, que agora tem o ID
-                onSelectPlan={() => handleSelectPlan(plan)} 
-                // 'isRedirecting' é uma prop nova que você pode adicionar
-                // ao seu PricingCard.tsx para desabilitar o botão
-                isRedirecting={isRedirecting} 
-              />
-            ))}
-          </div>
+    	           key={plan.id} 
+  	             plan={plan} // (Agora o 'plan' tem 'isBlackFriday' e 'oldPrice')
+    	           onSelectPlan={() => handleSelectPlan(plan)} 
+  	         	 isRedirecting={isRedirecting === plan.id} 
+          	   />
+      	     ))}
+      	   </div>
 
-        </div>
-      </div>
-    </Layout>
+  	     </div>
+  	   </div>
+  	 </Layout>
   );
 };
 
