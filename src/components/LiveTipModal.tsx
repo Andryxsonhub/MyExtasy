@@ -1,5 +1,5 @@
 // src/components/LiveTipModal.tsx
-// --- ★★★ CORREÇÃO 10/11: Passando 'roomName' para a API ★★★ ---
+// --- ★★★ CORREÇÃO 11/11: Recebendo 'setMessages' e adicionando o presente localmente ★★★ ---
 
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -7,28 +7,32 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from '@/contexts/AuthProvider';
 import { useToast } from "@/components/ui/use-toast";
-import { transferirPimentas } from '@/services/pimentasApi'; // Importação OK
+import { transferirPimentas } from '@/services/pimentasApi';
 import { Loader2, Flame, Gift } from 'lucide-react';
-import type { Socket } from 'socket.io-client';
+import { type Socket } from 'socket.io-client'; // Correção do import ts(2749)
 import type { UserData, Message as ChatMessage } from '@/types/types'; 
 
 interface LiveTipModalProps {
   isOpen: boolean;
   onClose: () => void;
-  roomName: string; // Ex: "live-1"
-  socket: Socket | null; 
+  roomName: string; 
+  socket: Socket | null;
+  // ★★★ 1. ADICIONAMOS A PROP 'setMessages' ★★★
+  setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
 }
 
 const tipAmounts = [10, 50, 100, 200, 500, 1000];
 
-const LiveTipModal: React.FC<LiveTipModalProps> = ({ isOpen, onClose, roomName, socket }) => {
+// ★★★ 2. RECEBEMOS 'setMessages' AQUI ★★★
+const LiveTipModal: React.FC<LiveTipModalProps> = ({ isOpen, onClose, roomName, socket, setMessages }) => {
   const { user, setUser } = useAuth();
   const { toast } = useToast();
   const [customAmount, setCustomAmount] = useState("");
   const [isTipping, setIsTipping] = useState(false);
 
   const handleSendTip = async (amount: number) => {
-    if (!user || !roomName || !socket || isTipping || amount <= 0) return;
+    // ★★★ 3. ADICIONAMOS 'setMessages' NA VALIDAÇÃO ★★★
+    if (!user || !roomName || !socket || !setMessages || isTipping || amount <= 0) return;
 
     // 1. Pega o ID do Host (Receptor)
     const hostId = parseInt(roomName.split('-')[1], 10);
@@ -47,8 +51,6 @@ const LiveTipModal: React.FC<LiveTipModalProps> = ({ isOpen, onClose, roomName, 
 
     try {
         // 3. Chama a API de transferência
-        // ★★★ CORREÇÃO: Passando 'roomName' como o 4º argumento ★★★
-        // (A variável 'amount' aqui será o 'valor' na API)
         const novoSaldo = await transferirPimentas(hostId, amount, 'presente_live', roomName);
 
         // 4. Atualiza o saldo (DO DOADOR)
@@ -67,7 +69,12 @@ const LiveTipModal: React.FC<LiveTipModalProps> = ({ isOpen, onClose, roomName, 
             read: false,
             isTip: true 
         };
+        
+        // 6. Envia para os outros (OK)
         socket.emit('chat message', tipMessage, roomName);
+        
+        // ★★★ 7. ADICIONA A MENSAGEM LOCALMENTE (O BUG CORRIGIDO!) ★★★
+        setMessages(prev => [...prev, tipMessage]);
 
         toast({
             title: "Presente Enviado!",
@@ -113,7 +120,7 @@ const LiveTipModal: React.FC<LiveTipModalProps> = ({ isOpen, onClose, roomName, 
         <div className="py-4">
           <div className="flex justify-center items-center gap-2 bg-gray-800 p-3 rounded-lg mb-6">
             <span className="text-gray-400 text-sm">Meu Saldo:</span>
-            <Flame className="w-5 h-5 text-yellow-500" />
+            <span className="text-xl" role="img" aria-label="pimenta">🌶️</span>
             <span className="text-xl font-bold text-white">{user?.pimentaBalance ?? 0}</span>
           </div>
 

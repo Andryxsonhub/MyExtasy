@@ -175,7 +175,7 @@ const ExplorePage: React.FC = () => {
               <Plus className={`w-8 h-8 ${isJaDestacado ? 'text-gray-600' : 'text-primary'}`} />
             </button>
             <span className="text-xs text-gray-300 font-medium">Destaque-se</span>
-            <span className="text-xs text-yellow-500 font-bold">300 🌶️</span>
+            <span className="text-xs text-yellow-500 font-bold"></span>
           </div>
 
           {/* Mensagem se não houver usuários online */}

@@ -1,6 +1,5 @@
 // src/pages/Live.tsx
-// --- VERSÃO COMPLETA COM TODAS AS CORREÇÕES (Layout, Contador, Bug do Token) ---
-// ★★★ NOVO 10/11 (v4): Corrigido o erro de Tipo (ts(2345)) no setUser do saldo ★★★
+// --- ★★★ CORREÇÃO 11/11: Passando 'setMessages' para o LiveTipModal ★★★ ---
 
 import React, { useState, useEffect, FormEvent, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -26,10 +25,10 @@ import { Button } from '@/components/ui/button';
 import LiveTipModal from '@/components/LiveTipModal';
 
 // ======================================================================
-// COMPONENTE 'LiveLayout' (Player)
-// (OK)
+// COMPONENTE 'LiveLayout' (Player) (OK)
 // ======================================================================
 const LiveLayout = () => {
+    // ... (Código do LiveLayout sem alteração) ...
     const tracks = useTracks([Track.Source.Camera, Track.Source.Microphone]);
     const { localParticipant } = useLocalParticipant();
     const hostVideoTrack = tracks.find(trackRef => trackRef.participant.permissions?.canPublish === true && trackRef.source === Track.Source.Camera && !trackRef.participant.isLocal) ||
@@ -65,15 +64,14 @@ const LiveLayout = () => {
 
 
 // ======================================================================
-// COMPONENTE 'LiveContent' (Vídeo + Chat)
-// (Com a correção ts(2345))
+// COMPONENTE 'LiveContent' (Vídeo + Chat) (OK)
 // ======================================================================
 const LiveContent: React.FC = () => {
     const { roomName } = useParams<{ roomName: string }>();
     const { user, setUser } = useAuth(); 
     
     const [socket, setSocket] = useState<Socket | null>(null);
-    const [messages, setMessages] = useState<ChatMessage[]>([]); 
+    const [messages, setMessages] = useState<ChatMessage[]>([]); // <-- A função que precisamos passar
     const [inputValue, setInputValue] = useState('');
     const chatContainerRef = useRef<HTMLDivElement>(null);
     const [isSocketConnected, setIsSocketConnected] = useState(false);
@@ -84,6 +82,7 @@ const LiveContent: React.FC = () => {
     const userId = user?.id; 
 
     useEffect(() => { /* Socket connection */
+        // ... (código sem alteração) ...
         if (userId && roomName) {
             const socketUrl = import.meta.env.VITE_API_URL || 'http://localhost:3333';
             const token = localStorage.getItem('authToken'); 
@@ -108,6 +107,7 @@ const LiveContent: React.FC = () => {
     }, [userId, roomName]);
 
     useEffect(() => { /* Socket listener (Chat) */
+        // ... (código sem alteração) ...
         if (socket) {
             const handleNewMessage = (msg: ChatMessage) => { 
                 if (msg) {
@@ -119,44 +119,29 @@ const LiveContent: React.FC = () => {
         }
     }, [socket]);
 
-    // ★★★ CORREÇÃO 10/11 (v4): Listener de Saldo ★★★
-    useEffect(() => {
-        // O 'user' aqui é o objeto do 'useAuth()'.
-        // O array [socket, user, setUser] garante que este 'useEffect'
-        // sempre tenha o 'user' mais recente quando for re-executado.
-        
+    useEffect(() => { /* Listener de Saldo */
+        // ... (código sem alteração) ...
         if (socket && user && setUser) {
-            
             const handleBalanceUpdate = (data: { userId: number | string, newBalance: number }) => {
                 console.log("[Socket] 'balance_updated' recebido:", data);
-                
-                // O evento é para mim?
                 if (data.userId == user.id) { 
                     console.log("[Socket] O saldo é meu! Atualizando contexto...");
-                    
-                    // ★★★ AQUI ESTÁ A CORREÇÃO (ts(2345)) ★★★
-                    // Em vez de passar uma função (prevUser =>),
-                    // passamos o NOVO objeto 'user' completo,
-                    // como o 'setUser' do seu AuthContext espera.
                     setUser({
-                        ...user, // Pega o 'user' atual (que está no escopo do effect)
-                        pimentaBalance: data.newBalance // E apenas atualiza o saldo
+                        ...user, 
+                        pimentaBalance: data.newBalance
                     });
                 }
             };
-
             socket.on('balance_updated', handleBalanceUpdate);
-
             return () => {
                 socket.off('balance_updated', handleBalanceUpdate);
             };
         }
-    // O 'user' aqui é necessário para que o objeto 'user'
-    // dentro do handler esteja sempre atualizado (evita 'stale state')
     }, [socket, user, setUser]); 
 
 
     useEffect(() => { /* Auto-scroll */
+        // ... (código sem alteração) ...
         if (chatContainerRef.current) { chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight; }
     }, [messages]);
 
@@ -175,7 +160,8 @@ const LiveContent: React.FC = () => {
                 isTip: false
             };
             socket.emit('chat message', messageData, roomName);
-            setMessages(prev => [...prev, messageData]); setInputValue('');
+            setMessages(prev => [...prev, messageData]); // <-- Adiciona localmente (Correto)
+            setInputValue('');
         }
     };
 
@@ -222,11 +208,9 @@ const LiveContent: React.FC = () => {
                 </div>
                 
                 <div className="p-4 border-t border-border flex-shrink-0 bg-card">
-                    {/* O saldo aqui vai atualizar em tempo real */}
+                    {/* ... (código sem alteração) ... */}
                     <div className="flex items-center justify-end text-xs text-yellow-500 mb-2"> <Flame className="w-3 h-3 mr-1" /> <span className="text-gray-400">Saldo:</span> <span className="font-bold ml-1">{user?.pimentaBalance ?? 0}</span> </div>
-                    
                     <form onSubmit={handleSendMessage} className="flex gap-2">
-                        {/* ... (código sem alteração) ... */}
                         <Button 
                             type="button" 
                             size="icon" 
@@ -237,7 +221,6 @@ const LiveContent: React.FC = () => {
                         >
                             <Gift className="w-5 h-5" />
                         </Button>
-                        
                         <input 
                             type="text" 
                             placeholder={isGratuito ? "Faça upgrade para conversar!" : !isSocketConnected ? "Conectando..." : "Sua mensagem..."}
@@ -246,7 +229,6 @@ const LiveContent: React.FC = () => {
                             disabled={!user || !socket || !isSocketConnected || isGratuito}
                             className="flex-grow p-2 rounded-md bg-transparent border-b border-border text-white text-sm focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
                         />
-                        
                         <Button 
                             type="submit" 
                             size="icon" 
@@ -260,12 +242,15 @@ const LiveContent: React.FC = () => {
             </div>
         </div>
 
+        {/* ★★★ A CORREÇÃO ESTÁ AQUI ★★★ */}
+        {/* Agora passamos a função 'setMessages' para o Modal */}
         {roomName && (
             <LiveTipModal 
                 isOpen={isTipModalOpen}
                 onClose={() => setIsTipModalOpen(false)}
                 roomName={roomName}
                 socket={socket}
+                setMessages={setMessages} // <-- ESTA É A LINHA ADICIONADA
             />
         )}
     </>
@@ -274,10 +259,10 @@ const LiveContent: React.FC = () => {
 
 
 // ======================================================================
-// COMPONENTE 'LivePage' (Página Principal)
-// (OK)
+// COMPONENTE 'LivePage' (Página Principal) (OK)
 // ======================================================================
 const LivePage: React.FC = () => {
+    // ... (Código do LivePage sem alteração) ...
     const { roomName } = useParams<{ roomName: string }>();
     const navigate = useNavigate();
     const { user } = useAuth();
