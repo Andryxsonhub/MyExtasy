@@ -1,10 +1,10 @@
 // src/pages/ExplorePage.tsx
-// --- ★★★ CORREÇÃO 11/11 (v7): Usando o EMOJI 🌶️ do Header ★★★ ---
+// --- ★★★ ATUALIZADO (Texto do modal agora diz 20 MINUTOS) ★★★ ---
 
 import React, { useState, useEffect } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Link } from 'react-router-dom';
-import { Plus, Loader2 } from 'lucide-react'; // Ícone da Pimenta/Chama removido daqui
+import { Plus, Loader2 } from 'lucide-react'; 
 import ContentCard from '../components/ContentCard';
 import type { MediaFeedItem, UserData } from '../types/types'; 
 import api from '../services/api';
@@ -32,7 +32,7 @@ interface OnlineUser {
   destacadoAte?: string | null;
 }
 
-// Componente OnlineUser (ATUALIZADO COM O EMOJI 🌶️)
+// Componente OnlineUser (OK, com o emoji 🌶️)
 const OnlineUser: React.FC<{ user: OnlineUser }> = ({ user }) => {
   const isDestacado = user.destacadoAte && new Date(user.destacadoAte) > new Date();
   
@@ -44,12 +44,9 @@ const OnlineUser: React.FC<{ user: OnlineUser }> = ({ user }) => {
       </Avatar>
 
       {isDestacado && (
-        // ★★★ AQUI ESTÁ O EMOJI (Finalmente!) ★★★
-        // (Ajustei o padding 'p-0.5' e o tamanho 'text-base' para ficar bonito)
         <div className="absolute top-0 right-1 bg-card p-0.5 rounded-full border border-primary/50">
           <span className="text-base" role="img" aria-label="pimenta">🌶️</span>
         </div>
-        // ★★★ FIM DO EMOJI ★★★
       )}
 
       <p className="text-sm font-semibold text-white truncate w-full">{user.name ?? 'Nome Indisponível'}</p>
@@ -136,7 +133,8 @@ const ExplorePage: React.FC = () => {
 
       setIsDestaqueModalOpen(false);
 
-      toast({ title: "Destaque ativado!", description: "Seu perfil agora está em destaque por 24 horas.", className: "bg-green-600 text-white border-green-700" });
+      // ★★★ CORREÇÃO AQUI (no toast) ★★★
+      toast({ title: "Destaque ativado!", description: "Seu perfil agora está em destaque por 20 minutos.", className: "bg-green-600 text-white border-green-700" });
 
       await fetchOnlineUsers(); 
 
@@ -217,14 +215,14 @@ const ExplorePage: React.FC = () => {
          )}
       </div>
 
-      {/* Modal de Confirmação "Destaque-se" */}
+      {/* ★★★ Modal de Confirmação (TEXTO ATUALIZADO) ★★★ */}
       <AlertDialog open={isDestaqueModalOpen} onOpenChange={setIsDestaqueModalOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Destacar seu Perfil?</AlertDialogTitle>
             <AlertDialogDescription>
               Isso custará <span className="font-bold text-yellow-400">300 pimentas</span> (Seu saldo: {user?.pimentaBalance ?? 0}).
-              Seu perfil aparecerá no topo da lista "Online agora" para todos os usuários por 24 horas.
+              Seu perfil aparecerá no topo da lista "Online agora" para todos os usuários por <span className="font-bold text-white">20 minutos</span>.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -237,7 +235,6 @@ const ExplorePage: React.FC = () => {
               {isComprandoDestaque ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
-                // ★ AQUI TAMBÉM: Usei o EMOJI no botão de confirmar
                 <span className="mr-2 text-base" role="img" aria-label="pimenta">🌶️</span>
               )}
               Confirmar Pagamento
