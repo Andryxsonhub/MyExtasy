@@ -1,3 +1,6 @@
+// src/types/types.ts
+// --- ★★★ CORREÇÃO 11/11: Adicionado 'destacadoAte' à interface UserData ★★★ ---
+
 import { ReactNode } from 'react';
 
 // Tipos AuthContextType, MonthlyStats, UserData
@@ -43,6 +46,9 @@ export interface UserData {
   // Novos campos do backend (opcionais)
   tipo_plano?: 'gratuito' | 'mensal' | 'anual';
   status?: 'ativo' | 'congelado' | 'deletado';
+  
+  // ★★★ ESTA É A LINHA QUE CORRIGE O ERRO (ts(2339)) ★★★
+  destacadoAte?: string | null;
 }
 
 // Tipo Post (para posts de texto)
@@ -61,7 +67,6 @@ export interface Photo {
   createdAt: string; 
   likeCount: number; 
   isLikedByMe: boolean;
-  // --- ★★★ ATUALIZAÇÃO AQUI ★★★ ---
   commentCount: number; 
 }
 export interface Video { 
@@ -71,7 +76,6 @@ export interface Video {
   createdAt: string; 
   likeCount: number; 
   isLikedByMe: boolean;
-  // --- ★★★ ATUALIZAÇÃO AQUI ★★★ ---
   commentCount: number;
 }
 
@@ -86,7 +90,6 @@ export interface MediaFeedItem {
   author: { id: number; name: string; profilePictureUrl: string | null; }; 
   likeCount: number; 
   isLikedByMe: boolean; 
-  // --- ★★★ ATUALIZAÇÃO AQUI (O erro do seu print) ★★★ ---
   commentCount: number;
 }
 
@@ -97,17 +100,15 @@ export interface LikerUser {
   profilePictureUrl: string | null;
 }
 
-// --- ★★★ A CORREÇÃO ESTÁ AQUI ★★★ ---
 // Interface para o Chat (Fase 3B/4)
 export interface Message {
-  id: number | string; // <-- CORRIGIDO (aceita 'string' para IDs de socket.io e 'number' para IDs do DB)
+  id: number | string; // (aceita 'string' de socket.io e 'number' do DB)
   content: string;
   createdAt: string; 
   authorId: number;
   receiverId: number;
   read: boolean;
   isTip?: boolean; // Para marcar se é uma gorjeta
-  // O autor da mensagem (para mostrar nome/foto)
   author: {
     id: number;
     name: string;

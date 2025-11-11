@@ -1,5 +1,5 @@
 // src/components/LiveTipModal.tsx
-// --- NOVO FICHEIRO (Fase 5: O Modal de Gorjetas) ---
+// --- ★★★ CORREÇÃO 10/11: Passando 'roomName' para a API ★★★ ---
 
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -7,19 +7,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from '@/contexts/AuthProvider';
 import { useToast } from "@/components/ui/use-toast";
-import { transferirPimentas } from '@/services/pimentasApi';
+import { transferirPimentas } from '@/services/pimentasApi'; // Importação OK
 import { Loader2, Flame, Gift } from 'lucide-react';
 import type { Socket } from 'socket.io-client';
-import type { UserData, Message as ChatMessage } from '@/types/types'; // Assegure-se que Message está no seu types.ts
+import type { UserData, Message as ChatMessage } from '@/types/types'; 
 
 interface LiveTipModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  roomName: string; // Ex: "live-1" (para sabermos o ID do host)
-  socket: Socket | null; // Para enviarmos a mensagem de gorjeta no chat
+  isOpen: boolean;
+  onClose: () => void;
+  roomName: string; // Ex: "live-1"
+  socket: Socket | null; 
 }
 
-// Valores predefinidos para os botões de gorjeta
 const tipAmounts = [10, 50, 100, 200, 500, 1000];
 
 const LiveTipModal: React.FC<LiveTipModalProps> = ({ isOpen, onClose, roomName, socket }) => {
@@ -28,70 +27,61 @@ const LiveTipModal: React.FC<LiveTipModalProps> = ({ isOpen, onClose, roomName, 
   const [customAmount, setCustomAmount] = useState("");
   const [isTipping, setIsTipping] = useState(false);
 
-  // A lógica handleSendTip que estava no Live.tsx agora vive AQUI.
   const handleSendTip = async (amount: number) => {
     if (!user || !roomName || !socket || isTipping || amount <= 0) return;
 
-    // 1. Pega o ID do Host (Receptor) a partir do nome da sala (ex: "live-1")
+    // 1. Pega o ID do Host (Receptor)
     const hostId = parseInt(roomName.split('-')[1], 10);
     if (isNaN(hostId)) {
-        console.error("ID do host inválido no roomName:", roomName);
-        toast({ title: "Erro", description: "Não foi possível identificar o anfitrião da live.", variant: "destructive" });
+        toast({ title: "Erro", description: "Não foi possível identificar o anfitrião.", variant: "destructive" });
         return;
     }
 
-    // 2. Verifica se o usuário tem saldo
+    // 2. Verifica saldo
     if ((user.pimentaBalance ?? 0) < amount) {
-        toast({
-            title: "Saldo Insuficiente",
-            description: "Você não tem pimentas suficientes para enviar este presente.",
-            variant: "destructive",
-        });
+        toast({ title: "Saldo Insuficiente", variant: "destructive" });
         return;
     }
 
     setIsTipping(true);
 
     try {
-        // 3. Chama a API de transferência (Fase 5 do Backend)
-        const novoSaldo = await transferirPimentas(hostId, amount, 'presente_live');
+        // 3. Chama a API de transferência
+        // ★★★ CORREÇÃO: Passando 'roomName' como o 4º argumento ★★★
+        // (A variável 'amount' aqui será o 'valor' na API)
+        const novoSaldo = await transferirPimentas(hostId, amount, 'presente_live', roomName);
 
-        // 4. Atualiza o saldo de pimentas no AuthContext (Frontend)
+        // 4. Atualiza o saldo (DO DOADOR)
         if (setUser && user) { 
             setUser({ ...user, pimentaBalance: novoSaldo });
         }
 
-        // 5. Envia uma mensagem de "Presente" para o chat (Socket.IO)
+        // 5. Envia a mensagem no chat
         const tipMessage: ChatMessage = {
             id: `${socket.id}-${Date.now()}`,
-            content: `enviou ${amount} 🌶️ de presente!`, // 'content' em vez de 'text'
+            content: `enviou ${amount} 🌶️ de presente!`, 
             author: { id: user.id, name: user.name || 'Usuário', profilePictureUrl: user.profilePictureUrl },
             authorId: user.id,
             receiverId: hostId,
             createdAt: new Date().toISOString(),
             read: false,
-            isTip: true // Marca como uma gorjeta (para estilização)
+            isTip: true 
         };
         socket.emit('chat message', tipMessage, roomName);
-        // (Não precisamos mais adicionar ao 'setMessages' local, pois o socket.on no Live.tsx já faz isso)
 
         toast({
             title: "Presente Enviado!",
-            description: `Você enviou ${amount} pimentas com sucesso.`,
+            description: `Você enviou ${amount} pimentas.`,
             className: "bg-green-600 text-white border-green-700"
         });
         
-        setCustomAmount(""); // Limpa o input customizado
-        onClose(); // Fecha o modal
+        setCustomAmount(""); 
+        onClose(); 
 
     } catch (error: any) {
         console.error("Erro ao enviar gorjeta:", error);
         const errorMsg = error.response?.data?.message || "Não foi possível enviar o presente.";
-        toast({
-            title: "Erro",
-            description: errorMsg,
-            variant: "destructive",
-        });
+        toast({ title: "Erro", description: errorMsg, variant: "destructive" });
     } finally {
         setIsTipping(false);
     }
@@ -103,7 +93,7 @@ const LiveTipModal: React.FC<LiveTipModalProps> = ({ isOpen, onClose, roomName, 
     if (!isNaN(amount) && amount > 0) {
       handleSendTip(amount);
     } else {
-      toast({ title: "Valor Inválido", description: "Por favor, insira um número válido.", variant: "destructive" });
+      toast({ title: "Valor Inválido", variant: "destructive" });
     }
   };
 

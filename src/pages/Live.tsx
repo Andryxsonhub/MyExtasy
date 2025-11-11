@@ -1,12 +1,12 @@
 // src/pages/Live.tsx
-// --- VERSÃO COMPLETA COM TODAS AS CORREÇÕES (playsInline, h-dvh, e Layout 50/50) ---
-// --- Data: 09/11/2025 ---
+// --- VERSÃO COMPLETA COM TODAS AS CORREÇÕES (Layout, Contador, Bug do Token) ---
+// ★★★ NOVO 10/11 (v4): Corrigido o erro de Tipo (ts(2345)) no setUser do saldo ★★★
 
 import React, { useState, useEffect, FormEvent, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '@/services/api';
-import { useAuth } from '@/contexts/AuthProvider';
-import { Flame, ArrowLeft, SendHorizontal, Loader2, Gift } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthProvider'; 
+import { Flame, ArrowLeft, SendHorizontal, Loader2, Gift, Users } from 'lucide-react';
 import { io } from "socket.io-client";
 import type { Socket } from "socket.io-client";
 import {
@@ -16,6 +16,7 @@ import {
     useTracks,
     ControlBar,
     useLocalParticipant,
+    useParticipants,
 } from '@livekit/components-react';
 import '@livekit/components-styles';
 import { Track } from 'livekit-client';
@@ -26,7 +27,7 @@ import LiveTipModal from '@/components/LiveTipModal';
 
 // ======================================================================
 // COMPONENTE 'LiveLayout' (Player)
-// (Com a correção 'playsInline')
+// (OK)
 // ======================================================================
 const LiveLayout = () => {
     const tracks = useTracks([Track.Source.Camera, Track.Source.Microphone]);
@@ -42,7 +43,7 @@ const LiveLayout = () => {
                 <VideoTrack
                     trackRef={hostVideoTrack}
                     style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
-                    playsInline={true} // Correção do bug do player nativo
+                    playsInline={true}
                 />
             ) : (
                 <div className="flex justify-center items-center h-full text-white text-lg font-semibold">
@@ -65,11 +66,12 @@ const LiveLayout = () => {
 
 // ======================================================================
 // COMPONENTE 'LiveContent' (Vídeo + Chat)
-// (Com a correção de layout 50/50 mobile)
+// (Com a correção ts(2345))
 // ======================================================================
 const LiveContent: React.FC = () => {
     const { roomName } = useParams<{ roomName: string }>();
-    const { user } = useAuth(); 
+    const { user, setUser } = useAuth(); 
+    
     const [socket, setSocket] = useState<Socket | null>(null);
     const [messages, setMessages] = useState<ChatMessage[]>([]); 
     const [inputValue, setInputValue] = useState('');
@@ -77,10 +79,12 @@ const LiveContent: React.FC = () => {
     const [isSocketConnected, setIsSocketConnected] = useState(false);
     const [isTipModalOpen, setIsTipModalOpen] = useState(false);
     
+    const participants = useParticipants();
     const isGratuito = !user?.tipo_plano || user.tipo_plano === 'gratuito';
+    const userId = user?.id; 
 
     useEffect(() => { /* Socket connection */
-        if (user && roomName) {
+        if (userId && roomName) {
             const socketUrl = import.meta.env.VITE_API_URL || 'http://localhost:3333';
             const token = localStorage.getItem('authToken'); 
             console.log("!!!! [DEBUG DO SOCKET] TENTANDO CONECTAR COM ESTE TOKEN:", token ? token.slice(0, 10) + '...' : 'TOKEN ESTÁ NULO');
@@ -101,21 +105,63 @@ const LiveContent: React.FC = () => {
             
             return () => { newSocket.disconnect(); };
         }
-    }, [user, roomName]);
+    }, [userId, roomName]);
 
-    useEffect(() => { /* Socket listener */
+    useEffect(() => { /* Socket listener (Chat) */
         if (socket) {
-            const handleNewMessage = (msg: ChatMessage) => { setMessages(prev => [...prev, msg]); };
+            const handleNewMessage = (msg: ChatMessage) => { 
+                if (msg) {
+                    setMessages(prev => [...prev, msg]); 
+                }
+            };
             socket.on('chat message', handleNewMessage);
             return () => { socket.off('chat message', handleNewMessage); };
         }
     }, [socket]);
+
+    // ★★★ CORREÇÃO 10/11 (v4): Listener de Saldo ★★★
+    useEffect(() => {
+        // O 'user' aqui é o objeto do 'useAuth()'.
+        // O array [socket, user, setUser] garante que este 'useEffect'
+        // sempre tenha o 'user' mais recente quando for re-executado.
+        
+        if (socket && user && setUser) {
+            
+            const handleBalanceUpdate = (data: { userId: number | string, newBalance: number }) => {
+                console.log("[Socket] 'balance_updated' recebido:", data);
+                
+                // O evento é para mim?
+                if (data.userId == user.id) { 
+                    console.log("[Socket] O saldo é meu! Atualizando contexto...");
+                    
+                    // ★★★ AQUI ESTÁ A CORREÇÃO (ts(2345)) ★★★
+                    // Em vez de passar uma função (prevUser =>),
+                    // passamos o NOVO objeto 'user' completo,
+                    // como o 'setUser' do seu AuthContext espera.
+                    setUser({
+                        ...user, // Pega o 'user' atual (que está no escopo do effect)
+                        pimentaBalance: data.newBalance // E apenas atualiza o saldo
+                    });
+                }
+            };
+
+            socket.on('balance_updated', handleBalanceUpdate);
+
+            return () => {
+                socket.off('balance_updated', handleBalanceUpdate);
+            };
+        }
+    // O 'user' aqui é necessário para que o objeto 'user'
+    // dentro do handler esteja sempre atualizado (evita 'stale state')
+    }, [socket, user, setUser]); 
+
 
     useEffect(() => { /* Auto-scroll */
         if (chatContainerRef.current) { chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight; }
     }, [messages]);
 
     const handleSendMessage = (e: FormEvent) => { /* Send message */
+        // ... (código sem alteração) ...
         e.preventDefault();
         if (inputValue.trim() && user && socket && roomName && isSocketConnected && !isGratuito) {
             const messageData: ChatMessage = { 
@@ -135,59 +181,52 @@ const LiveContent: React.FC = () => {
 
     return (
     <> 
-        {/* Este é o layout que funciona no PC (md:flex-row) e Mobile (flex-col) */}
         <div className="flex flex-col md:flex-row h-full bg-black text-white overflow-hidden">
-
-            {/* ★★★ ÁREA DO PLAYER (CORRIGIDA) ★★★
-              Lógica Mobile (default):
-              - 'flex-1': Ocupa o espaço que sobrar (depois que o chat pegar a altura fixa).
-              - 'min-h-0': Permite que o 'flex-1' funcione e encolha se precisar.
-            */}
             <div className="w-full flex-1 min-h-0 md:h-full md:aspect-auto bg-black relative md:flex-1">
                 <LiveLayout />
             </div>
 
-            {/* ★★★ ÁREA DO CHAT (CORRIGIDA) ★★★
-              Lógica Mobile (default):
-              - 'h-[50%]': Ocupa 50% da altura da tela. (Pode ajustar, ex: h-[45%])
-              - 'flex-shrink-0': NUNCA encolha.
-            */}
             <div className="w-full h-[50%] flex-shrink-0 md:h-full md:flex-none md:w-80 lg:w-96 bg-card flex flex-col md:flex-shrink-0 border-l border-border">
-                {/* Cabeçalho (Não cresce) */}
-                <div className="p-4 border-b border-border flex-shrink-0">
+                
+                <div className="p-4 border-b border-border flex-shrink-0 flex justify-between items-center">
                     <h2 className="text-xl font-semibold text-white">Chat ao Vivo</h2>
+                    <div className="flex items-center text-sm text-gray-400" title={`${participants.length} pessoas assistindo`}>
+                        <Users className="w-4 h-4 mr-1.5 text-gray-500" />
+                        <span>{participants.length}</span>
+                    </div>
                 </div>
                 
-                {/* Lista de Mensagens (Cresce e Rola) */}
                 <div ref={chatContainerRef} className="flex-grow p-4 space-y-3 overflow-y-auto min-h-0">
+                    {/* ... (código sem alteração) ... */}
                     {!isSocketConnected && <p className="text-sm text-yellow-400 text-center">Conectando...</p>}
                     {isSocketConnected && messages.length === 0 && <p className="text-sm text-gray-500 text-center">Nenhuma mensagem.</p>}
                     {messages.map((msg) => ( 
-                        <div key={msg.id.toString()} className={`flex items-start gap-2.5 text-sm ${msg.isTip ? 'justify-center' : ''}`}>
-                            {msg.isTip ? (
-                                <p className="text-center font-bold text-yellow-400 bg-yellow-900/50 rounded-full px-3 py-1 text-xs">
-                                    <Gift className="w-4 h-4 inline-block mr-1.5" />
-                                    {user && msg.author.id === user.id ? 'Você' : msg.author.name || 'Anônimo'} {msg.content}
-                                </p>
-                            ) : (
-                                <>
-                                    <span className={`font-semibold flex-shrink-0 ${user && msg.author.id === user.id ? 'text-green-400' : 'text-blue-400'}`}> 
-                                        {user && msg.author.id === user.id ? 'Você' : msg.author.name || 'Anônimo'}: 
-                                    </span> 
-                                    <p className="break-words text-gray-200">{msg.content}</p>
-                                </>
-                            )}
-                        </div>
+                        msg && ( 
+                            <div key={msg.id.toString()} className={`flex items-start gap-2.5 text-sm ${msg.isTip ? 'justify-center' : ''}`}>
+                                {msg.isTip ? (
+                                    <p className="text-center font-bold text-yellow-400 bg-yellow-900/50 rounded-full px-3 py-1 text-xs">
+                                        <Gift className="w-4 h-4 inline-block mr-1.5" />
+                                        {user && msg.author.id === user.id ? 'Você' : msg.author.name || 'Anônimo'} {msg.content}
+                                    </p>
+                                ) : (
+                                    <>
+                                        <span className={`font-semibold flex-shrink-0 ${user && msg.author.id === user.id ? 'text-green-400' : 'text-blue-400'}`}> 
+                                            {user && msg.author.id === user.id ? 'Você' : msg.author.name || 'Anônimo'}: 
+                                        </span> 
+                                        <p className="break-words text-gray-200">{msg.content}</p>
+                                    </>
+                                )}
+                            </div>
+                        )
                     ))}
                 </div>
                 
-                {/* Input (Não cresce) */}
                 <div className="p-4 border-t border-border flex-shrink-0 bg-card">
+                    {/* O saldo aqui vai atualizar em tempo real */}
                     <div className="flex items-center justify-end text-xs text-yellow-500 mb-2"> <Flame className="w-3 h-3 mr-1" /> <span className="text-gray-400">Saldo:</span> <span className="font-bold ml-1">{user?.pimentaBalance ?? 0}</span> </div>
                     
                     <form onSubmit={handleSendMessage} className="flex gap-2">
-                        
-                        {/* Botão de Presente (Permitido para gratuitos) */}
+                        {/* ... (código sem alteração) ... */}
                         <Button 
                             type="button" 
                             size="icon" 
@@ -199,7 +238,6 @@ const LiveContent: React.FC = () => {
                             <Gift className="w-5 h-5" />
                         </Button>
                         
-                        {/* Input de Chat (Bloqueado para gratuitos) */}
                         <input 
                             type="text" 
                             placeholder={isGratuito ? "Faça upgrade para conversar!" : !isSocketConnected ? "Conectando..." : "Sua mensagem..."}
@@ -209,7 +247,6 @@ const LiveContent: React.FC = () => {
                             className="flex-grow p-2 rounded-md bg-transparent border-b border-border text-white text-sm focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
                         />
                         
-                        {/* Botão de Enviar (Bloqueado para gratuitos) */}
                         <Button 
                             type="submit" 
                             size="icon" 
@@ -238,7 +275,7 @@ const LiveContent: React.FC = () => {
 
 // ======================================================================
 // COMPONENTE 'LivePage' (Página Principal)
-// (Com a correção 'h-dvh')
+// (OK)
 // ======================================================================
 const LivePage: React.FC = () => {
     const { roomName } = useParams<{ roomName: string }>();
@@ -248,11 +285,12 @@ const LivePage: React.FC = () => {
     const [wsUrl, setWsUrl] = useState<string | null>(null);
     const [isLoadingToken, setIsLoadingToken] = useState(true);
     const { toast } = useToast();
+    const userId = user?.id;
 
     useEffect(() => { /* Fetch Token */
         const fetchToken = async () => {
             setIsLoadingToken(true);
-            if (user && roomName) {
+            if (userId && roomName) {
                 try {
                     const response = await api.get(`/lives/token/${roomName}`);
                     setToken(response.data.token); setWsUrl(response.data.wsUrl);
@@ -268,7 +306,7 @@ const LivePage: React.FC = () => {
             } else { setIsLoadingToken(false); }
         };
         fetchToken();
-    }, [user, navigate, roomName, toast]);
+    }, [userId, navigate, roomName, toast]); 
 
     const handleDisconnected = async () => { /* Handle Disconnect */
         console.log("LiveKit desconectado...");
@@ -293,12 +331,11 @@ const LivePage: React.FC = () => {
         return <div className="flex flex-col justify-center items-center h-dvh bg-background text-white"> <p className="mb-4">Erro ao obter dados.</p> <button onClick={() => navigate('/lives')} className="text-primary hover:underline flex items-center"> <ArrowLeft size={16} className="mr-1" /> Voltar </button> </div>;
     }
 
-    // 'h-dvh' (Dynamic Viewport Height) é o correto para mobile.
     return (
         <div className="h-dvh flex flex-col bg-background overflow-hidden">
             <LiveKitRoom
                 video={true} audio={true} token={token} serverUrl={wsUrl} data-lk-theme="default"
-                style={{ height: 'auto' }} // Deixa o Tailwind (className) controlar
+                style={{ height: 'auto' }} 
                 className="w-full flex-grow min-h-0"
                 onDisconnected={handleDisconnected} onError={handleLiveKitError}
             >
