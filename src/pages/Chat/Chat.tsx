@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom'; // <-- useNavigate adicionado!
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthProvider';
+import { Send, ArrowLeft, MessageCircle } from 'lucide-react';
 
 type UserData = {
   id: number;
@@ -27,7 +28,7 @@ type Message = {
 export function Chat() {
   const { user } = useAuth(); 
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate(); // <-- Hook para fazer o botão voltar funcionar
+  const navigate = useNavigate();
   const targetUserId = searchParams.get('userId'); 
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -71,7 +72,7 @@ export function Chat() {
     
     const fetchHistory = async () => {
       try {
-        const { data } = await api.get(`/messages/${selectedUser.id}`);
+        const { data } = await api.get(`/messages/conversation/${selectedUser.id}`);
         setMessages(data);
       } catch (error) {
         console.error("Erro ao carregar mensagens:", error);
@@ -84,97 +85,73 @@ export function Chat() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // ★★★ FUNÇÃO ATUALIZADA COM O DETETIVE DE ERROS ★★★
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !selectedUser) return;
 
     try {
-      const { data } = await api.post(`/messages/${selectedUser.id}`, { content: newMessage });
+      const { data } = await api.post('/messages/send', { 
+        receiverId: selectedUser.id,
+        content: newMessage 
+      });
       
-      setMessages((prev) => [...prev, data]);
+      setMessages((prev) => [...prev, data.message]);
       setNewMessage('');
       
       const refreshConversations = await api.get('/messages/conversations');
       setConversations(refreshConversations.data);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao enviar mensagem:", error);
-      alert("Erro ao enviar. Tente novamente.");
+      
+      // Captura a mensagem real de erro que o seu backend mandou
+      const backendError = error.response?.data?.error || error.response?.data?.message || "Erro desconhecido no servidor.";
+      
+      // Mostra o erro real na tela
+      alert(`Aviso do Sistema: ${backendError}`);
     }
   };
 
   const getAvatar = (userData: UserData) => {
     if (userData.profile?.avatarUrl) {
-      return <img src={userData.profile.avatarUrl} alt={userData.name || 'User'} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />;
+      return <img src={userData.profile.avatarUrl} alt={userData.name || 'User'} className="w-full h-full object-cover" />;
     }
-    return <div style={{ fontSize: '18px', color: '#fff' }}>{userData.name?.charAt(0) || 'U'}</div>;
+    return <div className="w-full h-full flex items-center justify-center text-lg text-white font-bold">{userData.name?.charAt(0) || 'U'}</div>;
   };
 
-  if (loading) return <div style={{ backgroundColor: '#121212', height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#e91e63' }}>Carregando conversas...</div>;
+  if (loading) return <div className="bg-[#121212] h-screen flex justify-center items-center text-[#e91e63]">Carregando conversas...</div>;
 
   return (
-    <div style={{ display: 'flex', height: '100vh', backgroundColor: '#121212', color: '#fff', fontFamily: 'sans-serif' }}>
+    <div className="flex flex-col md:flex-row h-screen bg-[#121212] text-white font-sans w-full overflow-hidden">
       
-      {/* LADO ESQUERDO: Lista de Conversas */}
-      <div style={{ width: '300px', borderRight: '1px solid #333', backgroundColor: '#0a0a0a', display: 'flex', flexDirection: 'column' }}>
-        
-        {/* ★★★ TOPO COM BOTÃO DE VOLTAR ★★★ */}
-        <div style={{ padding: '20px', borderBottom: '1px solid #333', display: 'flex', alignItems: 'center' }}>
-          <button 
-            onClick={() => navigate(-1)} // Volta para a página anterior
-            style={{ 
-              background: 'none', 
-              border: 'none', 
-              color: '#aaa', 
-              cursor: 'pointer', 
-              marginRight: '15px', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center',
-              padding: '5px'
-            }}
-            title="Voltar"
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="19" y1="12" x2="5" y2="12"></line>
-              <polyline points="12 19 5 12 12 5"></polyline>
-            </svg>
+      <div className="hidden md:flex w-[300px] shrink-0 border-r border-[#333] bg-[#0a0a0a] flex-col">
+        <div className="p-5 border-b border-[#333] flex items-center">
+          <button onClick={() => navigate(-1)} className="mr-3 text-gray-400 hover:text-white transition-colors" title="Voltar">
+            <ArrowLeft size={24} />
           </button>
-          <h2 style={{ fontSize: '24px', fontWeight: 'bold', margin: 0, color: '#e91e63' }}>Mensagens</h2>
+          <h2 className="text-2xl font-bold m-0 text-[#e91e63]">Mensagens</h2>
         </div>
         
-        <div style={{ flex: 1, overflowY: 'auto', padding: '10px' }}>
+        <div className="flex-1 overflow-y-auto p-3">
           {conversations.length === 0 ? (
-            <p style={{ textAlign: 'center', color: '#666', marginTop: '20px' }}>Nenhuma conversa ainda.</p>
+            <p className="text-center text-gray-500 mt-5">Nenhuma conversa ainda.</p>
           ) : (
             conversations.map((conv) => (
               <div 
                 key={conv.user.id}
                 onClick={() => setSelectedUser(conv.user)}
-                style={{ 
-                  padding: '15px', 
-                  backgroundColor: selectedUser?.id === conv.user.id ? '#2a2a2a' : 'transparent', 
-                  borderRadius: '8px', 
-                  cursor: 'pointer', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  marginBottom: '5px',
-                  transition: 'background-color 0.2s'
-                }}
+                className={`p-3 rounded-lg cursor-pointer flex items-center mb-2 transition-colors ${selectedUser?.id === conv.user.id ? 'bg-[#2a2a2a]' : 'hover:bg-[#1a1a1a]'}`}
               >
-                <div style={{ width: '45px', height: '45px', borderRadius: '50%', backgroundColor: '#444', marginRight: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <div className="w-11 h-11 rounded-full bg-[#444] mr-3 shrink-0 overflow-hidden">
                   {getAvatar(conv.user)}
                 </div>
-                <div style={{ flex: 1, overflow: 'hidden' }}>
-                  <p style={{ margin: 0, fontWeight: 'bold', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
-                    {conv.user.name || conv.user.username}
-                  </p>
-                  <p style={{ margin: 0, fontSize: '13px', color: '#aaa', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
-                    {conv.lastMessage?.content || 'Nova conversa'}
-                  </p>
+                <div className="flex-1 overflow-hidden">
+                  <p className="m-0 font-bold truncate">{conv.user.name || conv.user.username}</p>
+                  <p className="m-0 text-[13px] text-gray-400 truncate">{conv.lastMessage?.content || 'Nova conversa'}</p>
                 </div>
                 {conv.unreadCount > 0 && (
-                  <div style={{ backgroundColor: '#e91e63', color: '#fff', fontSize: '12px', padding: '2px 8px', borderRadius: '12px', marginLeft: '10px' }}>
+                  <div className="bg-[#e91e63] text-white text-[12px] px-2 py-0.5 rounded-full ml-2">
                     {conv.unreadCount}
                   </div>
                 )}
@@ -184,74 +161,100 @@ export function Chat() {
         </div>
       </div>
 
-      {/* LADO DIREITO: Área do Bate-Papo */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#121212' }}>
+      <div className="flex-1 flex flex-col h-full w-full bg-[#121212] relative">
         
-        {!selectedUser ? (
-          <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', flexDirection: 'column' }}>
-             <div style={{ fontSize: '60px', marginBottom: '20px' }}>💬</div>
-             <h2 style={{ color: '#aaa' }}>Selecione uma conversa para começar</h2>
-          </div>
-        ) : (
-          <>
-            <div style={{ padding: '20px', borderBottom: '1px solid #333', backgroundColor: '#1a1a1a', display: 'flex', alignItems: 'center' }}>
-              <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#444', marginRight: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                 {getAvatar(selectedUser)}
-              </div>
-              <h3 style={{ margin: 0, fontSize: '18px' }}>{selectedUser.name || selectedUser.username}</h3>
-            </div>
+        <div className="p-4 border-b border-[#333] bg-[#1a1a1a] flex items-center shrink-0">
+          <button onClick={() => navigate(-1)} className="mr-4 text-gray-400 md:hidden hover:text-white" title="Voltar">
+             <ArrowLeft size={24} />
+          </button>
+          
+          {selectedUser ? (
+             <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full overflow-hidden bg-[#444] shrink-0 border border-[#333]">
+                   {getAvatar(selectedUser)}
+                </div>
+                <h3 className="m-0 font-bold text-lg truncate">{selectedUser.name || selectedUser.username}</h3>
+             </div>
+          ) : (
+             <h2 className="text-xl font-bold text-[#e91e63] md:hidden">Mensagens</h2>
+          )}
+        </div>
 
-            <div style={{ flex: 1, padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-              {messages.length === 0 ? (
-                 <p style={{ textAlign: 'center', color: '#666', marginTop: '40px' }}>Inicie a conversa! Envie a primeira mensagem. 🔥</p>
-              ) : (
-                messages.map((msg) => {
-                  const isMe = msg.authorId === user?.id;
-
-                  return (
-                    <div key={msg.id} style={{ textAlign: isMe ? 'right' : 'left', marginBottom: '15px', alignSelf: isMe ? 'flex-end' : 'flex-start', maxWidth: '75%' }}>
-                      <div style={{ 
-                        backgroundColor: isMe ? '#e91e63' : '#2a2a2a', 
-                        color: '#fff', 
-                        padding: '12px 18px', 
-                        borderRadius: isMe ? '15px 0px 15px 15px' : '0px 15px 15px 15px', 
-                        display: 'inline-block', 
-                        lineHeight: '1.4', 
-                        textAlign: 'left',
-                        wordBreak: 'break-word'
-                      }}>
-                        {msg.content}
-                      </div>
-                      <div style={{ fontSize: '11px', color: '#666', marginTop: '5px', textAlign: isMe ? 'right' : 'left' }}>
-                        {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-              <div ref={messagesEndRef} />
-            </div>
-
-            <div style={{ padding: '20px', borderTop: '1px solid #333', backgroundColor: '#1a1a1a' }}>
-              <form onSubmit={handleSendMessage} style={{ display: 'flex' }}>
-                <input 
-                  type="text" 
-                  placeholder="Digite sua mensagem..." 
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  style={{ flex: 1, padding: '15px 20px', borderRadius: '25px', border: 'none', backgroundColor: '#2a2a2a', color: '#fff', outline: 'none', fontSize: '16px' }}
-                />
-                <button 
-                  type="submit"
-                  disabled={!newMessage.trim()}
-                  style={{ marginLeft: '15px', padding: '0 30px', borderRadius: '25px', border: 'none', backgroundColor: newMessage.trim() ? '#e91e63' : '#555', color: '#fff', cursor: newMessage.trim() ? 'pointer' : 'not-allowed', fontWeight: 'bold', fontSize: '16px', transition: '0.2s' }}
+        <div className="flex md:hidden overflow-x-auto p-3 bg-[#0a0a0a] border-b border-[#333] gap-4 shrink-0 items-start scrollbar-hide">
+            {conversations.length === 0 && !selectedUser && (
+               <p className="text-sm text-gray-500 w-full text-center py-2">Nenhuma conversa ainda.</p>
+            )}
+            {conversations.map(conv => (
+                <div 
+                  key={conv.user.id} 
+                  onClick={() => setSelectedUser(conv.user)}
+                  className="relative flex flex-col items-center gap-1 cursor-pointer shrink-0 w-[60px]"
                 >
-                  Enviar
-                </button>
-              </form>
-            </div>
-          </>
+                   <div className={`w-14 h-14 rounded-full p-0.5 border-2 ${selectedUser?.id === conv.user.id ? 'border-[#e91e63]' : 'border-transparent'}`}>
+                      <div className="w-full h-full rounded-full overflow-hidden bg-[#444] flex items-center justify-center">
+                          {getAvatar(conv.user)}
+                      </div>
+                   </div>
+                   <span className="text-[11px] text-gray-400 w-full truncate text-center">
+                      {conv.user.name?.split(' ')[0] || conv.user.username}
+                   </span>
+                   {conv.unreadCount > 0 && (
+                      <span className="absolute top-0 right-1 bg-[#e91e63] text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full border border-[#0a0a0a]">
+                         {conv.unreadCount}
+                      </span>
+                   )}
+                </div>
+            ))}
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 flex flex-col bg-[#121212]">
+          {!selectedUser ? (
+             <div className="flex-1 flex justify-center items-center flex-col opacity-50">
+                <MessageCircle size={60} className="mb-4" />
+                <h2 className="text-lg text-center">Selecione uma conversa acima para começar</h2>
+             </div>
+          ) : messages.length === 0 ? (
+             <p className="text-center text-gray-500 mt-10">Inicie a conversa! Envie a primeira mensagem. 🔥</p>
+          ) : (
+            messages.map((msg) => {
+              const isMe = msg.authorId === user?.id;
+              return (
+                <div key={msg.id} className={`mb-4 flex flex-col max-w-[85%] sm:max-w-[75%] ${isMe ? 'self-end items-end' : 'self-start items-start'}`}>
+                  <div className={`px-4 py-2.5 inline-block break-words text-[15px] ${isMe ? 'bg-[#e91e63] text-white rounded-[18px_4px_18px_18px]' : 'bg-[#2a2a2a] text-white rounded-[4px_18px_18px_18px]'}`}>
+                    {msg.content}
+                  </div>
+                  <div className={`text-[11px] text-gray-500 mt-1 ${isMe ? 'text-right' : 'text-left'}`}>
+                    {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                </div>
+              );
+            })
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+
+        {selectedUser && (
+          <div className="p-3 sm:p-4 border-t border-[#333] bg-[#1a1a1a] shrink-0">
+            <form onSubmit={handleSendMessage} className="flex items-center gap-2 w-full max-w-4xl mx-auto">
+              <input 
+                type="text" 
+                placeholder="Digite a mensagem..." 
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                className="flex-1 bg-[#2a2a2a] text-white rounded-full px-5 py-3.5 outline-none border border-transparent focus:border-[#e91e63] transition-colors text-[15px]"
+              />
+              <button 
+                type="submit"
+                disabled={!newMessage.trim()}
+                className="bg-[#e91e63] hover:bg-pink-600 disabled:bg-[#444] disabled:cursor-not-allowed text-white rounded-full w-12 h-12 flex items-center justify-center shrink-0 transition-colors"
+                title="Enviar"
+              >
+                <Send size={20} className={newMessage.trim() ? "translate-x-[-1px] translate-y-[1px]" : ""} />
+              </button>
+            </form>
+          </div>
         )}
+
       </div>
     </div>
   );

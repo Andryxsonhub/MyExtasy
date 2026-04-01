@@ -1,5 +1,5 @@
 // src/App.tsx
-// --- CORRIGIDO E ATUALIZADO (Adiciona a rota de Mensagens e esconde Header/Footer nela) ---
+// --- ATUALIZADO (Adiciona a rota de Notificações) ---
 
 import { useEffect } from 'react';
 import { Toaster } from "./components/ui/toaster";
@@ -33,9 +33,8 @@ import RegistrationFlow from "./components/registration/RegistrationFlow";
 import TermosDeUso from './pages/TermosDeUso';
 import ExplorePage from "./pages/ExplorePage";
 import MediaViewPage from "./pages/MediaViewPage";
-
-// --- ★★★ IMPORTAÇÃO DA NOVA PÁGINA DE CHAT ★★★ ---
 import { Chat } from './pages/Chat/Chat';
+import Notificacoes from './pages/Notificacoes'; // <-- IMPORTAÇÃO DA NOVA PÁGINA
 
 const queryClient = new QueryClient();
 
@@ -89,9 +88,10 @@ const AppRoutes = () => {
             <Route path="/profile/:userId" element={<ProtectedRoute><UserProfilePage /></ProtectedRoute>} />
             <Route path="/meu-perfil" element={<ProtectedRoute><UserProfilePage /></ProtectedRoute>} />
             <Route path="/:mediaType/:id" element={<ProtectedRoute><MediaViewPage /></ProtectedRoute>} />
-            
-            {/* --- ★★★ NOSSA ROTA SECRETA DE MENSAGENS ★★★ --- */}
             <Route path="/mensagens" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
+            
+            {/* --- ★★★ NOSSA ROTA NOVA DE NOTIFICAÇÕES ★★★ --- */}
+            <Route path="/notificacoes" element={<ProtectedRoute><Notificacoes /></ProtectedRoute>} />
             
             <Route path="*" element={<NotFound />} />
         </Routes>
@@ -101,16 +101,12 @@ const AppRoutes = () => {
 const AppLayout: React.FC = () => {
   const location = useLocation();
   
-  // Verifica se a URL atual é a página da live OU a página de mensagens
   const isLivePage = location.pathname.startsWith('/live/');
   const isChatPage = location.pathname.startsWith('/mensagens');
-  
-  // Esconde Header e Footer se for Live ou Chat
   const hideHeaderFooter = isLivePage || isChatPage;
 
   return (
     <AuthProvider>
-      {/* Só mostra o Header se NÃO for a página da live nem do chat */}
       {!hideHeaderFooter && <Header />}
 
       <div className="flex flex-col min-h-screen">
@@ -118,7 +114,6 @@ const AppLayout: React.FC = () => {
           <AppRoutes />
         </main>
         
-        {/* Só mostra o Footer se NÃO for a página da live nem do chat */}
         {!hideHeaderFooter && <Footer />}
       </div>
     </AuthProvider>
