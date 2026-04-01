@@ -1,5 +1,5 @@
 // src/pages/UserProfilePage.tsx
-// --- ★★★ CORREÇÃO 11/11 (v4): Corrigindo o typo 'isMyMProfile' -> 'isMyProfile' ★★★ ---
+// --- ★★★ CORREÇÃO CHAT: Redirecionando para a nova página de Mensagens ★★★ ---
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams, useLocation, Link } from 'react-router-dom'; 
@@ -20,7 +20,7 @@ import VideosTabContent from '@/components/tabs/VideosTabContent';
 import CertificationModal from '@/components/CertificationModal';
 import StatsModal from '@/components/StatsModal';
 import DetailedStatsModal from '@/components/DetailedStatsModal'; 
-import ChatModal from '@/components/ChatModal'; 
+// import ChatModal from '@/components/ChatModal'; // <-- Removido (usaremos a página inteira)
 import { useAuth } from '@/contexts/AuthProvider';
 import { fetchMyStats } from '@/services/interactionApi';
 import { useToast } from "@/components/ui/use-toast"; 
@@ -44,7 +44,6 @@ const UserProfilePage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('posts');
   const [isMyProfile, setIsMyProfile] = useState(false);
 
-  // ... (Todos os 'useState' e 'open/close' dos Modais permanecem iguais) ...
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const openEditModal = () => setIsEditModalOpen(true);
   const closeEditModal = () => setIsEditModalOpen(false);
@@ -62,7 +61,6 @@ const UserProfilePage: React.FC = () => {
   const closeStatsModal = () => setIsStatsModalOpen(false);
   const [isDetailedStatsModalOpen, setIsDetailedStatsModalOpen] = useState(false);
   const [detailedStatType, setDetailedStatType] = useState<StatType | null>(null);
-  const [isChatModalOpen, setIsChatModalOpen] = useState(false);
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const openAccountModal = () => setIsAccountModalOpen(true);
   const closeAccountModal = () => setIsAccountModalOpen(false);
@@ -80,8 +78,18 @@ const UserProfilePage: React.FC = () => {
     setIsDetailedStatsModalOpen(false);
     setDetailedStatType(null); 
   };
-  const openChatModal = () => setIsChatModalOpen(true);
-  const closeChatModal = () => setIsChatModalOpen(false);
+
+  // --- ★★★ A MÁGICA ACONTECE AQUI ★★★ ---
+  // Quando clica no botão de Mensagem do Header, mandamos o usuário para a nova página!
+  // Nós passamos o ID da modelo na URL (?userId=123) para a página do Chat já abrir a conversa com ela.
+  const openChatModal = () => {
+    if (profileData && profileData.id) {
+        navigate(`/mensagens?userId=${profileData.id}`);
+    } else {
+        // Fallback caso não tenha o ID na hora
+        navigate('/mensagens');
+    }
+  };
 
 
   // fetchData
@@ -90,7 +98,6 @@ const UserProfilePage: React.FC = () => {
     setIsMyProfile(isViewingOwnProfile);
     const targetId = isViewingOwnProfile ? null : userId; 
 
-    // Rotas Corrigidas (v3)
     const profileUrl = isViewingOwnProfile ? '/users/profile' : `/users/profile/${targetId}`; 
     const postsUrl = isViewingOwnProfile ? '/posts' : `/posts/user/${targetId}`; 
     const photosUrl = isViewingOwnProfile ? '/users/photos' : `/users/${targetId}/photos`;
@@ -228,7 +235,6 @@ const UserProfilePage: React.FC = () => {
                 <div className="mt-6">
                   {isMyProfile && activeTab === 'posts' && <CreatePost userProfilePicture={profileData.profilePictureUrl} onPostCreated={fetchData} />}
                   
-                  {/* ★★★ ESTA É A LINHA CORRIGIDA (de 'isMyMProfile' para 'isMyProfile') ★★★ */}
                   {activeTab === 'posts' && <div className={isMyProfile ? "mt-8" : ""}><PostList posts={posts} /></div>}
                   
                   {activeTab === 'about' && <AboutTabContent user={profileData} />}
@@ -287,14 +293,6 @@ const UserProfilePage: React.FC = () => {
           onClose={closeDetailedStatsModal}
           userId={detailedStatsUserId}
           statType={detailedStatType}
-        />
-      )}
-
-      {profileData && (
-        <ChatModal 
-          isOpen={isChatModalOpen}
-          onClose={closeChatModal}
-          targetUser={profileData} 
         />
       )}
 

@@ -121,7 +121,7 @@ const Planos: React.FC = () => {
           <div className="max-w-3xl mx-auto text-center mb-12">
             <h1 className="text-4xl sm:text-5xl font-extrabold text-white">
               Escolha o plano ideal para você
-section:             </h1>
+            </h1>
             <p className="mt-4 text-lg text-gray-400">
               Tenha acesso ilimitado à nossa comunidade e a benefícios exclusivos para apimentar suas experiências.
             </p>
